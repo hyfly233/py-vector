@@ -10,11 +10,11 @@ import psutil
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from py_faiss.config import settings
-from py_faiss.core.embedding import get_embedding_service
-from py_faiss.core.vector_store import get_vector_store
-from py_faiss.services.document_service import get_document_service
-from py_faiss.services.search_service import get_search_service
+from py_rag.config import settings
+from py_rag.core.embedding import get_embedding_service
+from py_rag.core.vector_store import get_vector_store
+from py_rag.services.document_service import get_document_service
+from py_rag.services.search_service import get_search_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

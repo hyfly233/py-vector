@@ -6,10 +6,10 @@ from typing import List, Dict, Any
 
 import faiss
 
-from py_faiss.config import settings
-from py_faiss.core.document_processor import DocumentProcessor
-from py_faiss.core.embedding import EmbeddingService
-from py_faiss.models.requests import SearchResult
+from py_rag.config import settings
+from py_rag.core.document_processor import DocumentProcessor
+from py_rag.core.embedding import EmbeddingService
+from py_rag.models.requests import SearchResult
 
 logger = logging.getLogger(__name__)
 

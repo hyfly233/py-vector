@@ -1,5 +1,5 @@
 [project]
-name = "py-faiss"
+name = "py-rag"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -31,7 +31,7 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 default = true
 
 [project.scripts]
-py-faiss = "py_faiss.main:main"
+py-rag = "py_rag.main:main"
 
 [build-system]
 requires = ["hatchling"]

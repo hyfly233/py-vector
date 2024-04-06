@@ -5,9 +5,9 @@ from collections import defaultdict
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 
-from py_faiss.core.embedding import get_embedding_service
-from py_faiss.core.vector_store import get_vector_store, SearchResult
-from py_faiss.services.document_service import get_document_service
+from py_rag.core.embedding import get_embedding_service
+from py_rag.core.vector_store import get_vector_store, SearchResult
+from py_rag.services.document_service import get_document_service
 
 logger = logging.getLogger(__name__)
 

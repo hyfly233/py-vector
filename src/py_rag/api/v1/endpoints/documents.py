@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 
-from py_faiss.services.document_service import get_document_service
+from py_rag.services.document_service import get_document_service
 
 router = APIRouter()
 

@@ -4,12 +4,12 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 
-from py_faiss.models.responses import (
+from py_rag.models.responses import (
     BaseResponse, SearchResponse, DocumentUploadResponse, 
     DocumentDetailResponse, ProcessingStatusResponse
 )
-from py_faiss.utils.response_helper import ResponseHelper
-from py_faiss.services.document_service import get_document_service
+from py_rag.utils.response_helper import ResponseHelper
+from py_rag.services.document_service import get_document_service
 
 router = APIRouter()
 

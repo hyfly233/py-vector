@@ -5,11 +5,11 @@ from fastapi import APIRouter, Query
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel
 
-from py_faiss.core.search_engine import SearchEngine
-from py_faiss.dependencies import get_search_engine
-from py_faiss.models.requests import SearchResponse
-from py_faiss.services.document_service import get_document_service
-from py_faiss.services.search_service import SearchOptions, SearchFilter, get_search_service
+from py_rag.core.search_engine import SearchEngine
+from py_rag.dependencies import get_search_engine
+from py_rag.models.requests import SearchResponse
+from py_rag.services.document_service import get_document_service
+from py_rag.services.search_service import SearchOptions, SearchFilter, get_search_service
 
 router = APIRouter()
 

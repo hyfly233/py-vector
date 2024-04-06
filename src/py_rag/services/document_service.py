@@ -6,9 +6,9 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 
 from pathlib import Path
-from py_faiss.core.document_processor import document_processor
-from py_faiss.core.embedding import get_embedding_service
-from py_faiss.core.vector_store import get_vector_store, Document
+from py_rag.core.document_processor import document_processor
+from py_rag.core.embedding import get_embedding_service
+from py_rag.core.vector_store import get_vector_store, Document
 
 logger = logging.getLogger(__name__)
 

@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: py-faiss-api
+  name: py-rag-api
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: py-faiss-api
+      app: py-rag-api
   template:
     metadata:
       labels:
-        app: py-faiss-api
+        app: py-rag-api
     spec:
       containers:
-        - name: py-faiss-api
-          image: py-faiss-api:latest
+        - name: py-rag-api
+          image: py-rag-api:latest
           ports:
             - containerPort: 8000
 

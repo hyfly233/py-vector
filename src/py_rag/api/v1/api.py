@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from py_faiss.api.v1.endpoints import documents, search, health
+from py_rag.api.v1.endpoints import documents, search, health
 
 api_router = APIRouter()
 

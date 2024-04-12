@@ -10,7 +10,7 @@ dependencies = [
     "chardet>=7.4.3",
     "datetime>=6.0",
     "faiss-cpu>=1.14.3",
-    "fastapi[standard]>=0.139.2",
+    "fastapi>=0.139.2",
     "hatchling>=1.31.0",
     "numpy>=2.5.1",
     "openpyxl>=3.1.5",
@@ -19,6 +19,7 @@ dependencies = [
     "pathlib>=1.0.1",
     "psutil>=7.2.2",
     "pydantic-settings>=2.10.1",
+    "pymilvus>=3.0.0",
     "pymupdf>=1.28.0",
     "python-docx>=1.2.0",
     "requests>=2.33.0",
@@ -26,12 +27,12 @@ dependencies = [
     "uvicorn[standard]>=0.51.0",
 ]
 
+[project.scripts]
+py-rag = "py_rag.main:main"
+
 [[tool.uv.index]]
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 default = true
-
-[project.scripts]
-py-rag = "py_rag.main:main"
 
 [build-system]
 requires = ["hatchling"]

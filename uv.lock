@@ -1114,7 +1114,7 @@ wheels = [
 ]
 
 [[package]]
-name = "py-rag"
+name = "py-vector"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

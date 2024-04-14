@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: py-rag-api
+  name: py-vector-api
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: py-rag-api
+      app: py-vector-api
   template:
     metadata:
       labels:
-        app: py-rag-api
+        app: py-vector-api
     spec:
       containers:
-        - name: py-rag-api
-          image: py-rag-api:latest
+        - name: py-vector-api
+          image: py-vector-api:latest
           ports:
             - containerPort: 8000
 

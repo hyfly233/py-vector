@@ -1,5 +1,5 @@
 [project]
-name = "py-rag"
+name = "py-vector"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.scripts]
-py-rag = "py_rag.main:main"
+py-vector = "py_rag.main:main"
 
 [[tool.uv.index]]
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"

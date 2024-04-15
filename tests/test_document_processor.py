@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 import aiofiles
 import pytest
 
-from py_rag.core.document_processor import DocumentProcessor, document_processor
+from py_vector.core.document_processor import DocumentProcessor, document_processor
 
 
 class TestDocumentProcessor:
@@ -210,7 +210,7 @@ class TestDocumentProcessor:
         file_path.write_bytes(b"%PDF-1.4 fake pdf content")
 
         # Mock PyPDF2
-        with patch('py_rag.core.document_processor.PdfReader') as mock_reader:
+        with patch('py_vector.core.document_processor.PdfReader') as mock_reader:
             mock_page = MagicMock()
             mock_page.extract_text.return_value = "这是PDF文档的内容。"
 
@@ -245,7 +245,7 @@ class TestDocumentProcessor:
         file_path.write_bytes(b"fake docx content")
 
         # Mock python-docx
-        with patch('py_rag.core.document_processor.Document') as mock_document:
+        with patch('py_vector.core.document_processor.Document') as mock_document:
             mock_paragraph = MagicMock()
             mock_paragraph.text = "这是Word文档的段落。"
 

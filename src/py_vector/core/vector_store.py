@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional
 import faiss
 import numpy as np
 
-from py_rag.config import settings
+from py_vector.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ from fastapi import Response
 from fastapi.responses import JSONResponse
 import uuid
 
-from py_rag.models.responses import BaseResponse, ErrorResponse
+from py_vector.models.responses import BaseResponse, ErrorResponse
 
 T = TypeVar('T')
 

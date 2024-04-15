@@ -9,11 +9,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import UJSONResponse
 
-from py_rag.api.v1.api import api_router
-from py_rag.config import settings
-from py_rag.core.embedding import cleanup_embedding_service
-from py_rag.core.search_engine import SearchEngine
-from py_rag.core.vector_store import cleanup_vector_store
+from py_vector.api.v1.api import api_router
+from py_vector.config import settings
+from py_vector.core.embedding import cleanup_embedding_service
+from py_vector.core.search_engine import SearchEngine
+from py_vector.core.vector_store import cleanup_vector_store
 
 load_dotenv()
 
@@ -130,7 +130,7 @@ def main() -> None:
     app_port: int = int(os.getenv('APP_PORT', 8080))
 
     uvicorn.run(
-        app="py_rag.main:app",
+        app="py_vector.main:app",
         host=app_host,
         port=app_port,
         reload=True

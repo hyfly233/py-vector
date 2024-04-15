@@ -4,7 +4,7 @@ from pathlib import Path
 import aiofiles
 import pytest
 
-from py_rag.core.document_processor import DocumentProcessor
+from py_vector.core.document_processor import DocumentProcessor
 
 
 class TestDocumentProcessor:

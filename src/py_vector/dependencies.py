@@ -1,6 +1,6 @@
 from fastapi import Request
 
-from py_rag.core.search_engine import SearchEngine
+from py_vector.core.search_engine import SearchEngine
 
 
 async def get_search_engine(request: Request) -> SearchEngine:

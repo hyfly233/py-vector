@@ -6,10 +6,10 @@ from typing import List, Dict, Any
 
 import faiss
 
-from py_rag.config import settings
-from py_rag.core.document_processor import DocumentProcessor
-from py_rag.core.embedding import EmbeddingService
-from py_rag.models.requests import SearchResult
+from py_vector.config import settings
+from py_vector.core.document_processor import DocumentProcessor
+from py_vector.core.embedding import EmbeddingService
+from py_vector.models.requests import SearchResult
 
 logger = logging.getLogger(__name__)
 

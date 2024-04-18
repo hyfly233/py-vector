@@ -42,6 +42,6 @@ build-backend = "hatchling.build"
 dev = [
     "anyio>=4.9.0",
     "httpx>=0.28.1",
-    "pytest>=8.4.1",
-    "pytest-asyncio>=1.1.0",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
 ]

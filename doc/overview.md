@@ -58,6 +58,10 @@ src/py_vector/
 │   ├── embedding.py      # EmbeddingService — OpenAI 兼容嵌入客户端
 │   ├── document_processor.py  # DocumentProcessor — 多格式文档提取和切片
 │   └── search_engine.py  # SearchEngine — 旧版搜索封装
+├── agent/                # 基于 pydantic-ai 的 Agent
+│   ├── models/rag.py     # 结构化输出模型（AnswerWithCitations, Source）
+│   ├── tools/search.py   # search_docs 工具
+│   └── rag.py            # RAG Agent 定义 + 工厂函数
 ├── services/             # 业务逻辑
 │   ├── document_service.py    # 文档上传、异步处理、查询、删除、备份、重建索引
 │   └── search_service.py      # 高级搜索（向量/混合/关键词）、重排序、缓存、历史
@@ -78,9 +82,9 @@ src/py_vector/
 - 启动时验证连接和模型可用性
 - 同步接口 `get_embedding_sync` 用于非异步环境
 
-### core/vector_store.py
+### vector_dbs/vector_store.py
 
-`VectorStore` 是 FAISS 索引的完整封装：
+`VectorStore` 是向量存储的抽象接口：
 
 - 支持多种索引类型（FlatIP / FlatL2 / IVF / HNSW）
 - 文档 CRUD：添加、搜索、删除（标记删除）、重建索引
@@ -89,7 +93,7 @@ src/py_vector/
 - 统计信息追踪
 - 文档 ID 到索引位置的映射管理
 
-### core/faiss_persistence.py
+### vector_dbs/faiss_persistence.py
 
 FAISS 持久化工具集：
 
@@ -129,6 +133,8 @@ FAISS 持久化工具集：
 | GET | `/api/v1/search/suggestions` | 搜索建议 |
 | GET | `/api/v1/search/stats` | 搜索引擎统计 |
 | DELETE | `/api/v1/search/cache/clear` | 清理缓存 |
+| **RAG 问答** |||
+| POST | `/api/v1/rag/ask` | RAG 问答（检索+生成，带引用） |
 | **健康检查** |||
 | GET | `/api/v1/health/` | 基础健康检查 |
 | GET | `/api/v1/health/detailed` | 详细健康检查（含组件和系统指标） |
@@ -138,13 +144,10 @@ FAISS 持久化工具集：
 ## 启动方式
 
 ```bash
-# 确保 Ollama 运行中，且已拉取 bge-m3 模型
-ollama pull bge-m3
-
 # 开发模式
 uv run uvicorn py_vector.main:app --host 0.0.0.0 --port 8000 --reload
 
-# 或使用启动脚本（自动检查 Ollama）
+# 或使用启动脚本
 bash scripts/start.sh
 ```
 

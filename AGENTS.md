@@ -36,7 +36,8 @@ HTTP Request → Router → Endpoint Handler → Service Layer → Core Layer �
 | Path | Contents |
 |---|---|
 | `src/py_vector/` | Package root |
-| `src/py_vector/api/v1/endpoints/` | `search.py`, `documents.py`, `health.py` — FastAPI route handlers |
+| `src/py_vector/agent/` | `rag.py` (RAG Agent), `tools/search.py`, `models/rag.py` — 基于 pydantic-ai 的 Agent |
+| `src/py_vector/api/v1/endpoints/` | `search.py`, `documents.py`, `health.py`, `rag.py` — FastAPI route handlers |
 | `src/py_vector/core/` | `embedding.py`, `document_processor.py`, `search_engine.py` |
 | `src/py_vector/vector_dbs/` | `vector_store.py` (ABC), `faiss_vector_store.py`, `faiss_persistence.py`, `milvus_vector_store.py` |
 | `src/py_vector/services/` | `document_service.py` (18.9KB), `search_service.py` (30.1KB) |

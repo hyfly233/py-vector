@@ -2,7 +2,7 @@ import logging
 from typing import Any
 
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from py_vector.agent.models.rag import AnswerWithCitations
@@ -40,7 +40,7 @@ SYSTEM_PROMPT = getattr(settings, "LLM_SYSTEM_PROMPT", None) or DEFAULT_SYSTEM_P
 
 def _build_model():
     """根据配置创建 OpenAI 兼容模型实例"""
-    return OpenAIModel(
+    return OpenAIChatModel(
         model_name=settings.LLM_MODEL,
         provider=OpenAIProvider(
             base_url=settings.LLM_BASE_URL,

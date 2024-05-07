@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from py_vector.api.v1.api import api_router
+from py_vector.api.v1.api_routers import api_router
 from py_vector.config import settings
 from py_vector.core.embedding import cleanup_embedding_service
 from py_vector.core.search_engine import SearchEngine

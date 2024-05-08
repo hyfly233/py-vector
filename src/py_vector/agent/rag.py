@@ -58,6 +58,7 @@ def _build_agent() -> Agent[RAGDeps, AnswerWithCitations]:
         output_type=AnswerWithCitations,
         deps_type=RAGDeps,
     )
+    # 显式注册外部工具函数，防止在单个文件膨胀
     agent.tool(search_docs)
     return agent
 

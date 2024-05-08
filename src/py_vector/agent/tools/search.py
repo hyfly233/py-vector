@@ -31,6 +31,7 @@ async def search_docs(
     会返回匹配的文档片段及其来源文件名和相似度分数。
 
     Args:
+        ctx: 运行上下文（自动注入）
         query: 搜索查询语句
         top_k: 返回的文本块数量（默认 10）
 

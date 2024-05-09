@@ -68,6 +68,7 @@ def get_rag_agent() -> Agent[RAGDeps, AnswerWithCitations]:
     global _rag_agent
     if _rag_agent is None:
         _rag_agent = _build_agent()
+    assert _rag_agent is not None
     return _rag_agent
 
 
@@ -76,6 +77,7 @@ def get_rag_deps_sync(search_service: Any) -> RAGDeps:
     global _rag_deps
     if _rag_deps is None:
         _rag_deps = RAGDeps(search_service=search_service)
+    assert _rag_deps is not None
     return _rag_deps
 
 
@@ -87,6 +89,7 @@ async def get_rag_deps() -> RAGDeps:
 
         search_service = await get_search_service()
         _rag_deps = RAGDeps(search_service=search_service)
+    assert _rag_deps is not None  # 消除 Pyright 的 global 类型收窄限制
     return _rag_deps
 
 

@@ -1,11 +1,13 @@
 import asyncio
 import hashlib
 import logging
+import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from py_vector.config import settings
 from py_vector.core.document_processor import document_processor
 from py_vector.core.embedding import get_embedding_service
 from py_vector.vector_dbs.vector_store import Document, get_vector_store
@@ -40,6 +42,7 @@ class DocumentService:
         filename: str,
         user_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        index: bool = True,
     ) -> dict[str, Any]:
         """
         上传并处理文档
@@ -49,6 +52,7 @@ class DocumentService:
             filename: 文件名
             user_id: 用户ID
             metadata: 额外元数据
+            index: 是否存入向量库。False 时仅保存文件，跳过嵌入和索引
 
         Returns:
             处理结果
@@ -61,6 +65,33 @@ class DocumentService:
             temp_file_path = await self.document_processor.save_temp_file(
                 file_content, filename
             )
+
+            # 特殊保存原始文件（即使不索引也保留）
+            file_storage_path = Path(settings.DOCUMENTS_PATH) / f"{doc_id}_{filename}"
+            file_storage_path.parent.mkdir(parents=True, exist_ok=True)
+            # 复制临时文件到永久存储
+            shutil.copy2(temp_file_path, file_storage_path)
+
+            if not index:
+                # 仅保存，不向量化
+                self.processing_status[doc_id] = {
+                    "status": "completed",
+                    "filename": filename,
+                    "user_id": user_id,
+                    "started_at": datetime.now().isoformat(),
+                    "completed_at": datetime.now().isoformat(),
+                    "progress": 100,
+                    "message": "文件已保存（未索引）",
+                    "indexed": False,
+                }
+                logger.info(f"✅ 文件已保存（未索引）: {doc_id} ({filename})")
+                return {
+                    "doc_id": doc_id,
+                    "status": "completed",
+                    "message": "文件上传成功（未存入向量库）",
+                    "filename": filename,
+                    "indexed": False,
+                }
 
             # 初始化处理状态
             self.processing_status[doc_id] = {

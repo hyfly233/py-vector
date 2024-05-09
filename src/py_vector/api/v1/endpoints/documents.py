@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 
 from py_vector.services.document_service import get_document_service
 
@@ -27,10 +27,20 @@ async def list_documents(
     path="/upload",
     summary="上传文档",
 )
-async def upload_document(file: UploadFile = File(...), user_id: str | None = None):
-    """上传文档"""
+async def upload_document(
+    file: UploadFile = File(...),
+    index: bool = Form(
+        True, description="是否存入向量库，false 时仅保存文件不建立索引"
+    ),
+    user_id: str | None = Form(None),
+):
+    """上传文档
+
+    通过 `index` 参数控制是否将文档内容向量化并存入向量库：
+    - `index=true`（默认）：上传 → 提取 → 切片 → 嵌入 → 索引
+    - `index=false`：仅保存文件，不做向量化处理
+    """
     try:
-        # 检查文件类型
         document_service = await get_document_service()
 
         if not document_service.document_processor.is_supported_file(file.filename):
@@ -38,12 +48,13 @@ async def upload_document(file: UploadFile = File(...), user_id: str | None = No
                 status_code=400, detail=f"不支持的文件类型: {file.filename}"
             )
 
-        # 读取文件内容
         content = await file.read()
 
-        # 处理文档
         result = await document_service.upload_and_process_document(
-            file_content=content, filename=file.filename, user_id=user_id
+            file_content=content,
+            filename=file.filename,
+            user_id=user_id,
+            index=index,
         )
 
         return result

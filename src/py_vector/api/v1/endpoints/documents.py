@@ -43,6 +43,9 @@ async def upload_document(
     try:
         document_service = await get_document_service()
 
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="文件名不能为空")
+
         if not document_service.document_processor.is_supported_file(file.filename):
             raise HTTPException(
                 status_code=400, detail=f"不支持的文件类型: {file.filename}"

@@ -1,13 +1,285 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>py-vector Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font: 14px/1.5 system-ui, sans-serif; background: #0f1117; color: #e1e3e8; padding: 20px; }
+h1 { font-size: 22px; margin-bottom: 16px; color: #f3f4f6; }
+h2 { font-size: 16px; margin: 20px 0 8px; color: #c084fc; cursor: pointer; user-select: none; }
+h2::before { content: '▾ '; }
+h2.collapsed::before { content: '▸ '; }
+.section { border: 1px solid #2e303a; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; background: #1a1b23; }
+.section.hidden { display: none; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0; }
+label { color: #9ca3af; font-size: 13px; min-width: 60px; }
+input, select, textarea { background: #0f1117; border: 1px solid #2e303a; border-radius: 4px; color: #e1e3e8; padding: 4px 8px; font: 13px/1.4 system-ui, monospace; }
+input[type=text], input[type=number], select { width: 140px; }
+textarea { width: 100%; min-height: 40px; resize: vertical; }
+input[type=file] { font: 13px system-ui; color: #9ca3af; }
+button { background: #c084fc; color: #0f1117; border: none; border-radius: 4px; padding: 4px 14px; font: 13px/1.4 system-ui; cursor: pointer; }
+button:active { background: #a855f7; }
+button.danger { background: #ef4444; }
+pre { background: #0f1117; border: 1px solid #2e303a; border-radius: 4px; padding: 8px; font: 12px/1.4 ui-monospace, monospace; overflow: auto; max-height: 300px; margin-top: 6px; white-space: pre-wrap; word-break: break-all; }
+.status { font-size: 12px; color: #6b7280; margin-left: 8px; }
+.status.ok { color: #22c55e; }
+.status.err { color: #ef4444; }
+.api-path { font-size: 11px; color: #6b7280; margin-left: 6px; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<h1>🔍 py-vector API Dashboard</h1>
+
+<!-- ===== HEALTH ===== -->
+<h2 onclick="toggle(this,'sec-health')">Health</h2>
+<div id="sec-health" class="section">
+  <div class="row"><button onclick="call('GET','/health/')">GET /health/</button><span id="s-health" class="status"></span></div>
+  <div class="row"><button onclick="call('GET','/health/detailed')">GET /health/detailed</button><span id="s-health-detailed" class="status"></span></div>
+  <div class="row"><button onclick="call('GET','/health/ready')">GET /health/ready</button><span id="s-health-ready" class="status"></span></div>
+  <div class="row"><button onclick="call('GET','/health/live')">GET /health/live</button><span id="s-health-live" class="status"></span></div>
+  <pre id="o-health"></pre>
+</div>
+
+<!-- ===== DOCUMENTS ===== -->
+<h2 onclick="toggle(this,'sec-docs')">Documents</h2>
+<div id="sec-docs" class="section">
+
+  <div class="row"><button onclick="listDocs()">GET /documents/</button> <span class="api-path">?page=1&page_size=20</span><span id="s-docs-list" class="status"></span></div>
+
+  <div class="row">
+    <button onclick="uploadDoc()">POST /documents/upload</button>
+    <input type="file" id="upload-file">
+    <label><input type="checkbox" id="upload-index" checked> 索引</label>
+    <span id="s-docs-upload" class="status"></span>
+  </div>
+
+  <div class="row">
+    <button onclick="getDoc()">GET /documents/{id}</button>
+    <input type="text" id="doc-get-id" placeholder="doc_id" size="32">
+    <span id="s-docs-get" class="status"></span>
+  </div>
+
+  <div class="row">
+    <button onclick="getDocStatus()">GET /documents/{id}/status</button>
+    <input type="text" id="doc-status-id" placeholder="doc_id" size="32">
+    <span id="s-docs-status" class="status"></span>
+  </div>
+
+  <div class="row">
+    <button class="danger" onclick="delDoc()">DELETE /documents/{id}</button>
+    <input type="text" id="doc-del-id" placeholder="doc_id" size="32">
+    <span id="s-docs-del" class="status"></span>
+  </div>
+
+  <div class="row"><button onclick="call('GET','/documents/stats/overview')">GET /documents/stats/overview</button><span id="s-docs-stats" class="status"></span></div>
+  <div class="row"><button onclick="call('POST','/documents/admin/rebuild-index')">POST /documents/admin/rebuild-index</button><span id="s-docs-rebuild" class="status"></span></div>
+  <div class="row">
+    <button onclick="backupDocs()">POST /documents/admin/backup</button>
+    <input type="text" id="doc-backup-path" placeholder="backup_path" value="./backup" size="24">
+    <span id="s-docs-backup" class="status"></span>
+  </div>
+
+  <pre id="o-docs"></pre>
+</div>
+
+<!-- ===== SEARCH ===== -->
+<h2 onclick="toggle(this,'sec-search')">Search</h2>
+<div id="sec-search" class="section">
+
+  <div class="row">
+    <button onclick="basicSearch()">POST /search/</button>
+    <input type="text" id="search-q-basic" placeholder="query" size="24" value="">
+    <label>top_k</label><input type="number" id="search-topk-basic" value="5" min="1" max="20">
+    <span id="s-search-basic" class="status"></span>
+  </div>
+
+  <div class="row">
+    <button onclick="advancedSearch()">POST /search/advanced</button>
+    <input type="text" id="search-q-adv" placeholder="query" size="24" value="">
+    <label>type</label>
+    <select id="search-type"><option value="vector">vector</option><option value="hybrid">hybrid</option><option value="keyword">keyword</option></select>
+    <label>rerank</label><input type="checkbox" id="search-rerank">
+    <span id="s-search-adv" class="status"></span>
+  </div>
+
+  <div class="row">
+    <button onclick="docSearch()">GET /search/documents</button>
+    <input type="text" id="search-q-doc" placeholder="query" size="24" value="">
+    <span id="s-search-doc" class="status"></span>
+  </div>
+
+  <div class="row">
+    <button onclick="suggest()">GET /search/suggestions</button>
+    <input type="text" id="search-q-sug" placeholder="partial query" size="24" value="">
+    <span id="s-search-sug" class="status"></span>
+  </div>
+
+  <div class="row"><button onclick="call('GET','/search/stats')">GET /search/stats</button><span id="s-search-stats" class="status"></span></div>
+  <div class="row"><button onclick="call('DELETE','/search/cache/clear')">DELETE /search/cache/clear</button><span id="s-search-cache" class="status"></span></div>
+
+  <pre id="o-search"></pre>
+</div>
+
+<!-- ===== RAG ===== -->
+<h2 onclick="toggle(this,'sec-rag')">RAG</h2>
+<div id="sec-rag" class="section">
+  <div class="row">
+    <button onclick="ragAsk()">POST /rag/ask</button>
+    <input type="text" id="rag-q" placeholder="你的问题" size="40" value="文档里写了什么？">
+    <label>top_k</label><input type="number" id="rag-topk" value="10" min="1" max="50">
+    <span id="s-rag" class="status"></span>
+  </div>
+  <pre id="o-rag"></pre>
+</div>
+
+<script>
+const BASE = '/api/v1';
+
+function outputId(path) {
+  const m = path.match(/^\/(\w+)/);
+  return m ? 'o-'+m[1] : 'o-health';
+}
+
+async function call(method, path, body) {
+  const out = document.getElementById(outputId(path));
+  const spanId = 's-'+path.split('/').filter(Boolean).join('-');
+  const span = document.getElementById(spanId);
+  if (span) { span.className = 'status'; span.textContent = '请求中...'; }
+  try {
+    const opt = { method, headers: {} };
+    if (body !== undefined) {
+      opt.headers['Content-Type'] = 'application/json';
+      opt.body = JSON.stringify(body);
+    }
+    const r = await fetch(BASE + path, opt);
+    const data = method === 'DELETE' && r.status === 204 ? { message: '已删除' } : await r.json();
+    out.textContent = JSON.stringify(data, null, 2);
+    if (span) { span.textContent = '✓'; span.className = 'status ok'; }
+    return data;
+  } catch (e) {
+    out.textContent = '请求失败: ' + e.message;
+    if (span) { span.textContent = '✗'; span.className = 'status err'; }
+  }
+}
+
+// ---- Documents ----
+async function listDocs() {
+  const r = await fetch(BASE + '/documents/?page=1&page_size=20');
+  const data = await r.json();
+  document.getElementById('o-docs').textContent = JSON.stringify(data, null, 2);
+  const s = document.getElementById('s-docs-list'); s.textContent = '✓'; s.className = 'status ok';
+}
+
+async function uploadDoc() {
+  const file = document.getElementById('upload-file').files[0];
+  if (!file) return alert('请选择文件');
+  const index = document.getElementById('upload-index').checked;
+  const fd = new FormData(); fd.append('file', file); fd.append('index', String(index));
+  const s = document.getElementById('s-docs-upload'); s.textContent = '上传中...'; s.className = 'status';
+  try {
+    const r = await fetch(BASE + '/documents/upload', { method: 'POST', body: fd });
+    const data = await r.json();
+    document.getElementById('o-docs').textContent = JSON.stringify(data, null, 2);
+    s.textContent = '✓'; s.className = 'status ok';
+  } catch(e) {
+    document.getElementById('o-docs').textContent = '上传失败: ' + e.message;
+    s.textContent = '✗'; s.className = 'status err';
+  }
+}
+
+function docField(prefix, suffix) {
+  return document.getElementById('doc-'+prefix+'-'+suffix)?.value;
+}
+
+async function getDoc() {
+  const id = docField('get','id'); if (!id) return alert('输入 doc_id');
+  await call('GET', '/documents/' + encodeURIComponent(id));
+}
+
+async function getDocStatus() {
+  const id = docField('status','id'); if (!id) return alert('输入 doc_id');
+  await call('GET', '/documents/' + encodeURIComponent(id) + '/status');
+}
+
+async function delDoc() {
+  const id = docField('del','id'); if (!id) return alert('输入 doc_id');
+  await call('DELETE', '/documents/' + encodeURIComponent(id));
+}
+
+async function backupDocs() {
+  const path = document.getElementById('doc-backup-path').value;
+  await call('POST', '/documents/admin/backup', { backup_path: path });
+}
+
+// ---- Search ----
+function searchField(prefix, suffix) {
+  return document.getElementById('search-' + prefix + '-' + suffix)?.value;
+}
+
+async function basicSearch() {
+  const q = searchField('q','basic'); if (!q) return alert('输入查询');
+  const topk = parseInt(searchField('topk','basic') || '5');
+  await call('POST', '/search/', { query: q, top_k: topk });
+}
+
+async function advancedSearch() {
+  const q = searchField('q','adv'); if (!q) return alert('输入查询');
+  const body = {
+    query: q,
+    search_type: document.getElementById('search-type').value,
+    top_k: 10,
+    enable_rerank: document.getElementById('search-rerank').checked,
+    enable_highlight: true,
+    chunk_merge: true,
+  };
+  const r = await fetch(BASE + '/search/advanced', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await r.json();
+  document.getElementById('o-search').textContent = JSON.stringify(data, null, 2);
+  const s = document.getElementById('s-search-adv'); s.textContent = '✓'; s.className = 'status ok';
+}
+
+async function docSearch() {
+  const q = searchField('q','doc'); if (!q) return alert('输入查询');
+  const r = await fetch(BASE + '/search/documents?q='+encodeURIComponent(q)+'&top_k=10');
+  const data = await r.json();
+  document.getElementById('o-search').textContent = JSON.stringify(data, null, 2);
+  const s = document.getElementById('s-search-doc'); s.textContent = '✓'; s.className = 'status ok';
+}
+
+async function suggest() {
+  const q = searchField('q','sug'); if (!q) return alert('输入部分查询');
+  const r = await fetch(BASE + '/search/suggestions?q='+encodeURIComponent(q)+'&limit=5');
+  const data = await r.json();
+  document.getElementById('o-search').textContent = JSON.stringify(data, null, 2);
+  const s = document.getElementById('s-search-sug'); s.textContent = '✓'; s.className = 'status ok';
+}
+
+// ---- RAG ----
+async function ragAsk() {
+  const q = document.getElementById('rag-q').value; if (!q) return alert('输入问题');
+  const topk = parseInt(document.getElementById('rag-topk').value || '10');
+  document.getElementById('s-rag').textContent = 'Agent 思考中...';
+  document.getElementById('s-rag').className = 'status';
+  try {
+    const r = await fetch(BASE + '/rag/ask', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ query: q, top_k: topk }) });
+    const data = await r.json();
+    document.getElementById('o-rag').textContent = JSON.stringify(data, null, 2);
+    const s = document.getElementById('s-rag'); s.textContent = '✓'; s.className = 'status ok';
+  } catch(e) {
+    document.getElementById('o-rag').textContent = '请求失败: ' + e.message;
+    const s = document.getElementById('s-rag'); s.textContent = '✗'; s.className = 'status err';
+  }
+}
+
+// ---- Section toggle ----
+function toggle(head, sectionId) {
+  const sec = document.getElementById(sectionId);
+  sec.classList.toggle('hidden');
+  head.classList.toggle('collapsed');
+}
+</script>
+</body>
 </html>

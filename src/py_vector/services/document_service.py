@@ -19,6 +19,14 @@ class DocumentService:
     """文档服务 - 提供完整的文档管理功能"""
 
     def __init__(self):
+        """初始化文档服务
+
+        Args:
+            无
+
+        Returns:
+            None
+        """
         self.document_processor = document_processor
         self.embedding_service = None
         self.vector_store = None
@@ -27,7 +35,16 @@ class DocumentService:
         self.processing_status: dict[str, dict[str, Any]] = {}
 
     async def initialize(self):
-        """初始化服务"""
+        """初始化服务
+
+        初始化嵌入向量服务和向量存储后端。
+
+        Args:
+            无
+
+        Returns:
+            None
+        """
         try:
             self.embedding_service = await get_embedding_service()
             self.vector_store = await get_vector_store()
@@ -48,14 +65,20 @@ class DocumentService:
         上传并处理文档
 
         Args:
-            file_content: 文件内容
+            file_content: 文件内容（二进制数据）
             filename: 文件名
             user_id: 用户ID
             metadata: 额外元数据
             index: 是否存入向量库。False 时仅保存文件，跳过嵌入和索引
 
         Returns:
-            处理结果
+            返回包含处理结果的字典，关键字段：
+            - doc_id: 文档ID
+            - status: 处理状态（"processing" 处理中 / "completed" 完成 / "error" 失败）
+            - message: 状态描述信息
+            - filename: 文件名
+            - indexed: 是否已索引（仅 index=False 时返回）
+            - error: 错误信息（仅 status 为 "error" 时返回）
         """
         # 生成文档ID
         doc_id = str(uuid.uuid4())
@@ -133,7 +156,18 @@ class DocumentService:
     async def _process_document_async(
         self, doc_id: str, file_path: Path, metadata: dict[str, Any] | None = None
     ):
-        """异步处理文档"""
+        """异步处理文档
+
+        在后台执行文档文本提取、分块、生成嵌入向量并存入向量存储。
+
+        Args:
+            doc_id: 文档ID
+            file_path: 临时文件路径
+            metadata: 额外元数据
+
+        Returns:
+            None（结果通过 processing_status 跟踪）
+        """
         try:
             # 更新状态：文本提取
             self._update_processing_status(doc_id, 10, "正在提取文档文本...")
@@ -228,7 +262,18 @@ class DocumentService:
                 logger.warning(f"清理临时文件失败: {e}")
 
     def _update_processing_status(self, doc_id: str, progress: int, message: str):
-        """更新处理状态"""
+        """更新处理状态
+
+        更新指定文档的处理进度和状态信息。
+
+        Args:
+            doc_id: 文档ID
+            progress: 处理进度（0-100）
+            message: 状态描述信息
+
+        Returns:
+            None
+        """
         if doc_id in self.processing_status:
             self.processing_status[doc_id].update(
                 {
@@ -239,7 +284,26 @@ class DocumentService:
             )
 
     async def get_processing_status(self, doc_id: str) -> dict[str, Any] | None:
-        """获取文档处理状态"""
+        """获取文档处理状态
+
+        Args:
+            doc_id: 文档ID
+
+        Returns:
+            返回处理状态字典，关键字段：
+            - status: 状态（"processing"/"completed"/"error"）
+            - progress: 处理进度（0-100）
+            - message: 状态描述
+            - started_at: 开始时间
+            - completed_at: 完成时间（仅已完成时返回）
+            - failed_at: 失败时间（仅失败时返回）
+            - error: 错误信息（仅失败时返回）
+            - filename: 文件名
+            - chunks_count: 分块数量（仅已完成时返回）
+            - file_size: 文件大小（仅已完成时返回）
+            - document_hash: 文档哈希（仅已完成时返回）
+            如果文档不存在则返回 None
+        """
         return self.processing_status.get(doc_id)
 
     async def search_documents(
@@ -253,13 +317,19 @@ class DocumentService:
         搜索文档
 
         Args:
-            query: 搜索查询
+            query: 搜索查询文本
             top_k: 返回结果数量
-            filter_doc_ids: 过滤特定文档
-            min_score: 最小相似度分数
+            filter_doc_ids: 过滤特定文档ID列表
+            min_score: 最小相似度分数（低于该分数的结果将被过滤）
 
         Returns:
-            搜索结果
+            返回包含搜索结果的字典，关键字段：
+            - query: 原始查询文本
+            - results: 搜索结果列表，每项包含文档详情和高亮文本
+            - total_results: 结果总数
+            - search_time: 搜索耗时（秒）
+            - error: 错误信息（搜索失败时返回）
+            - timestamp: 时间戳
         """
         try:
             start_time = datetime.now()
@@ -309,7 +379,18 @@ class DocumentService:
             }
 
     def _highlight_text(self, text: str, query: str, max_length: int = 200) -> str:
-        """高亮搜索关键词"""
+        """高亮搜索关键词
+
+        在文本中标记搜索关键词，并返回包含关键词高亮的摘要片段。
+
+        Args:
+            text: 原始文本
+            query: 搜索查询（用于提取关键词）
+            max_length: 返回文本的最大长度
+
+        Returns:
+            包含高亮标记（**关键词**）的文本摘要片段，前后可能带有省略号
+        """
         try:
             # 简单的关键词高亮
             query_words = query.lower().split()
@@ -351,7 +432,23 @@ class DocumentService:
             return text[:max_length] + ("..." if len(text) > max_length else "")
 
     async def get_document_details(self, doc_id: str) -> dict[str, Any] | None:
-        """获取文档详细信息"""
+        """获取文档详细信息
+
+        Args:
+            doc_id: 文档ID
+
+        Returns:
+            返回文档详情字典，关键字段：
+            - doc_id: 文档ID
+            - file_name: 文件名
+            - file_path: 文件路径
+            - chunks_count: 分块数量
+            - created_at: 创建时间
+            - metadata: 文档元数据
+            - chunks: 文本块列表，每项包含 chunk_index（块索引）、text（文本内容）、
+              text_length（文本长度）
+            如果文档不存在则返回 None
+        """
         try:
             # 从向量存储获取文档
             document_chunks = await self.vector_store.get_document(doc_id)
@@ -384,7 +481,21 @@ class DocumentService:
             return None
 
     async def delete_document(self, doc_id: str) -> dict[str, Any]:
-        """删除文档"""
+        """删除文档
+
+        从向量存储中删除指定文档及其所有分块，并清理处理状态。
+
+        Args:
+            doc_id: 要删除的文档ID
+
+        Returns:
+            返回删除结果字典，关键字段：
+            - doc_id: 文档ID
+            - status: 删除状态（"deleted" 成功 / "error" 失败）
+            - message: 状态描述信息
+            - deleted_at: 删除时间（仅删除成功时返回）
+            - error: 错误信息（仅删除失败时返回）
+        """
         try:
             # 从向量存储删除
             success = await self.vector_store.delete_document(doc_id)
@@ -420,7 +531,23 @@ class DocumentService:
     async def list_documents(
         self, page: int = 1, page_size: int = 20, include_deleted: bool = False
     ) -> dict[str, Any]:
-        """列出文档"""
+        """列出文档
+
+        分页获取文档列表，可选择是否包含已删除的文档。
+
+        Args:
+            page: 页码（从 1 开始）
+            page_size: 每页文档数量
+            include_deleted: 是否包含已删除的文档
+
+        Returns:
+            返回文档列表和分页信息字典，关键字段：
+            - documents: 文档列表，每项包含文档基本信息
+            - pagination: 分页信息，包含 page（当前页码）、page_size（每页数量）、
+              total（总数）、total_pages（总页数）
+            - error: 错误信息（获取失败时返回）
+            - timestamp: 时间戳
+        """
         try:
             # 从向量存储获取文档列表
             all_documents = await self.vector_store.list_documents(include_deleted)
@@ -463,7 +590,22 @@ class DocumentService:
             }
 
     async def get_statistics(self) -> dict[str, Any]:
-        """获取统计信息"""
+        """获取统计信息
+
+        获取向量存储统计、处理状态统计、支持的文档格式等信息。
+
+        Args:
+            无
+
+        Returns:
+            返回统计信息字典，关键字段：
+            - vector_store: 向量存储统计信息
+            - processing: 处理状态统计，包含 processing（处理中数量）、
+              completed（已完成数量）、error（失败数量）
+            - supported_formats: 支持的文档格式列表
+            - error: 错误信息（获取失败时返回）
+            - timestamp: 时间戳
+        """
         try:
             # 向量存储统计
             vector_stats = await self.vector_store.get_stats()
@@ -488,7 +630,21 @@ class DocumentService:
             return {"error": str(e), "timestamp": datetime.now().isoformat()}
 
     async def rebuild_index(self) -> dict[str, Any]:
-        """重建索引"""
+        """重建索引
+
+        重新构建向量存储的索引。
+
+        Args:
+            无
+
+        Returns:
+            返回重建结果字典，关键字段：
+            - status: 状态（"success" 成功 / "error" 失败）
+            - message: 状态描述信息
+            - processing_time: 处理耗时（秒）
+            - error: 错误信息（仅失败时返回）
+            - timestamp: 时间戳
+        """
         try:
             logger.info("开始重建文档索引...")
             start_time = datetime.now()
@@ -522,7 +678,21 @@ class DocumentService:
             }
 
     async def backup_data(self, backup_path: str) -> dict[str, Any]:
-        """备份数据"""
+        """备份数据
+
+        将向量存储数据备份到指定路径。
+
+        Args:
+            backup_path: 备份目标路径
+
+        Returns:
+            返回备份结果字典，关键字段：
+            - status: 状态（"success" 成功 / "error" 失败）
+            - message: 状态描述信息
+            - backup_path: 备份路径（仅成功时返回）
+            - error: 错误信息（仅失败时返回）
+            - timestamp: 时间戳
+        """
         try:
             success = await self.vector_store.backup_index(backup_path)
 
@@ -550,7 +720,16 @@ class DocumentService:
             }
 
     async def cleanup_temp_files(self):
-        """清理临时文件"""
+        """清理临时文件
+
+        清理文档处理过程中产生的临时文件。
+
+        Args:
+            无
+
+        Returns:
+            None
+        """
         try:
             await self.document_processor.cleanup_temp_files()
             logger.info("临时文件清理完成")
@@ -558,7 +737,16 @@ class DocumentService:
             logger.error(f"清理临时文件失败: {e}")
 
     async def cleanup(self):
-        """清理服务资源"""
+        """清理服务资源
+
+        清理临时文件和处理状态，释放服务资源。
+
+        Args:
+            无
+
+        Returns:
+            None
+        """
         try:
             # 清理临时文件
             await self.cleanup_temp_files()
@@ -576,7 +764,16 @@ _document_service: DocumentService | None = None
 
 
 async def get_document_service() -> DocumentService:
-    """获取全局文档服务实例"""
+    """获取全局文档服务实例
+
+    获取或创建全局唯一的 DocumentService 单例实例。
+
+    Args:
+        无
+
+    Returns:
+        DocumentService: 已初始化的文档服务实例
+    """
     global _document_service
 
     if _document_service is None:
@@ -588,7 +785,16 @@ async def get_document_service() -> DocumentService:
 
 
 async def cleanup_document_service():
-    """清理全局文档服务"""
+    """清理全局文档服务
+
+    清理并销毁全局 DocumentService 实例，释放资源。
+
+    Args:
+        无
+
+    Returns:
+        None
+    """
     global _document_service
 
     if _document_service:

@@ -49,7 +49,15 @@ class AdvancedSearchRequest(BaseModel):
 async def search_documents(
     request: SearchRequest, search_engine: SearchEngine = Depends(get_search_engine)
 ):
-    """搜索文档"""
+    """搜索文档
+
+    Args:
+        request (SearchRequest): 搜索请求，包含查询词和参数
+        search_engine (SearchEngine): 搜索引擎实例（依赖注入）
+
+    Returns:
+        SearchResponse: 搜索结果
+    """
     start_time = time.time()
 
     try:
@@ -77,7 +85,16 @@ async def search_documents_get(
     top_k: int = Query(10, ge=1, le=50, description="返回结果数量"),
     min_score: float = Query(0.1, ge=0.0, le=1.0, description="最小得分过滤"),
 ):
-    """搜索文档（GET 方式）"""
+    """搜索文档（GET 方式）
+
+    Args:
+        q (str): 搜索查询词
+        top_k (int): 返回结果数量，范围 1-50
+        min_score (float): 最小得分过滤，范围 0.0-1.0
+
+    Returns:
+        dict: 搜索结果，包含查询结果列表等字段
+    """
     document_service = await get_document_service()
 
     return await document_service.search_documents(
@@ -92,7 +109,14 @@ async def search_documents_get(
     response_description="搜索文档结果",
 )
 async def search_documents_by_content(request: SearchRequest):
-    """搜索文档（通过文档内容）"""
+    """搜索文档（通过文档内容）
+
+    Args:
+        request (SearchRequest): 搜索请求，包含查询词、过滤条件和参数
+
+    Returns:
+        dict: 搜索结果，包含查询结果列表等字段
+    """
     document_service = await get_document_service()
 
     return await document_service.search_documents(
@@ -110,7 +134,14 @@ async def search_documents_by_content(request: SearchRequest):
     response_description="搜索引擎统计信息",
 )
 async def get_search_stats(search_engine: SearchEngine = Depends(get_search_engine)):
-    """获取搜索引擎统计信息"""
+    """获取搜索引擎统计信息
+
+    Args:
+        search_engine (SearchEngine): 搜索引擎实例（依赖注入）
+
+    Returns:
+        dict: 搜索引擎统计信息，包含索引大小、文档数量等字段
+    """
     try:
         stats = await search_engine.get_stats()
         return stats
@@ -125,7 +156,15 @@ async def get_search_stats(search_engine: SearchEngine = Depends(get_search_engi
     response_description="高级搜索结果",
 )
 async def advanced_search(request: AdvancedSearchRequest, user_id: str | None = None):
-    """高级搜索"""
+    """高级搜索
+
+    Args:
+        request (AdvancedSearchRequest): 高级搜索请求，包含搜索类型、过滤器、排序等参数
+        user_id (str | None): 用户 ID，可选
+
+    Returns:
+        dict: 高级搜索结果，包含结果列表、搜索类型、处理时间等字段
+    """
     try:
         search_service = await get_search_service()
 
@@ -168,7 +207,15 @@ async def advanced_search(request: AdvancedSearchRequest, user_id: str | None = 
 async def get_search_suggestions(
     q: str = Query(..., description="部分查询"), limit: int = Query(5, ge=1, le=20)
 ):
-    """获取搜索建议"""
+    """获取搜索建议
+
+    Args:
+        q (str): 部分查询词，用于匹配建议
+        limit (int): 返回建议数量，范围 1-20
+
+    Returns:
+        dict: 搜索建议，包含 query（查询词）和 suggestions（建议列表）字段
+    """
     search_service = await get_search_service()
     suggestions = await search_service.get_search_suggestions(q, limit)
 
@@ -180,7 +227,11 @@ async def get_search_suggestions(
     summary="获取搜索统计",
 )
 async def get_search_statistics():
-    """获取搜索统计"""
+    """获取搜索统计
+
+    Returns:
+        dict: 搜索统计信息，包含总搜索次数、平均搜索时间等字段
+    """
     search_service = await get_search_service()
     stats = await search_service.get_search_statistics()
 
@@ -192,7 +243,11 @@ async def get_search_statistics():
     summary="清理搜索缓存",
 )
 async def clear_search_cache():
-    """清理搜索缓存"""
+    """清理搜索缓存
+
+    Returns:
+        dict: 清理结果，包含 message（消息）字段
+    """
     search_service = await get_search_service()
     await search_service.clear_cache()
 

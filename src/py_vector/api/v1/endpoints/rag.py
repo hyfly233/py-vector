@@ -22,6 +22,12 @@ async def ask_rag(request: RAGQuery):
     1. 接收用户问题
     2. Agent 调用 search_docs 工具搜索相关文档片段
     3. LLM 根据检索结果生成带引用的回答
+
+    Args:
+        request (RAGQuery): RAG 查询请求
+
+    Returns:
+        RAGResponse: RAG 问答响应
     """
     start = time.time()
 

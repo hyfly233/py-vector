@@ -7,7 +7,13 @@ logger = logging.getLogger(__name__)
 
 
 class RAGDeps:
-    """RAG Agent 依赖"""
+    """RAG Agent 依赖
+
+    Args:
+        search_service: 搜索服务实例
+        top_k: 检索返回的文档数量，默认 10
+        min_score: 最小相似度分数，默认 0.1
+    """
 
     def __init__(
         self,

@@ -24,6 +24,16 @@ class SearchFilter:
         min_score: float = 0.0,
         metadata_filters: dict[str, Any] | None = None,
     ):
+        """初始化搜索过滤器
+
+        Args:
+            doc_ids: 要过滤的文档ID列表，仅返回指定文档的结果
+            file_names: 要过滤的文件名列表，支持子串匹配
+            file_types: 要过滤的文件类型列表（如 ["pdf", "docx"]）
+            date_range: 日期范围过滤，ISO 时间字符串元组
+            min_score: 最小相似度分数
+            metadata_filters: 元数据过滤条件字典，键为元数据字段名，值为期望值
+        """
         self.doc_ids = doc_ids
         self.file_names = file_names
         self.file_types = file_types
@@ -45,6 +55,18 @@ class SearchOptions:
         chunk_merge: bool = True,
         diversity_threshold: float = 0.7,
     ):
+        """初始化搜索选项
+
+        Args:
+            search_type: 搜索类型，可选 "vector"（向量搜索）、"hybrid"（混合搜索）、
+                "keyword"（关键词搜索）
+            top_k: 返回的最大结果数量
+            enable_rerank: 是否启用重排序
+            enable_highlight: 是否启用关键词高亮
+            enable_summary: 是否启用摘要生成
+            chunk_merge: 是否合并同一文档的多个分块
+            diversity_threshold: 多样性过滤阈值（0.0-1.0），值越低结果越多样化
+        """
         self.search_type = search_type
         self.top_k = top_k
         self.enable_rerank = enable_rerank
@@ -70,6 +92,21 @@ class EnhancedSearchResult:
         summary: str = "",
         metadata: dict[str, Any] | None = None,
     ):
+        """初始化增强搜索结果
+
+        Args:
+            doc_id: 文档ID
+            file_name: 文件名
+            file_path: 文件路径
+            chunks: 匹配的文本块列表，每项包含 chunk_index（块索引）、text（文本内容）、
+                score（得分）、text_length（文本长度）
+            max_score: 最大匹配分数
+            avg_score: 平均匹配分数
+            rank: 排序位置
+            highlighted_text: 高亮文本
+            summary: 摘要文本
+            metadata: 文档元数据
+        """
         self.doc_id = doc_id
         self.file_name = file_name
         self.file_path = file_path
@@ -82,6 +119,25 @@ class EnhancedSearchResult:
         self.metadata = metadata or {}
 
     def to_dict(self) -> dict[str, Any]:
+        """转换为字典
+
+        Args:
+            无
+
+        Returns:
+            返回包含所有字段的字典，关键字段：
+            - doc_id: 文档ID
+            - file_name: 文件名
+            - file_path: 文件路径
+            - chunks: 文本块列表
+            - max_score: 最大匹配分数
+            - avg_score: 平均匹配分数
+            - rank: 排序位置
+            - highlighted_text: 高亮文本
+            - summary: 摘要文本
+            - metadata: 文档元数据
+            - chunk_count: 文本块数量
+        """
         return {
             "doc_id": self.doc_id,
             "file_name": self.file_name,
@@ -101,6 +157,14 @@ class SearchService:
     """搜索服务 - 提供高级搜索功能"""
 
     def __init__(self):
+        """初始化搜索服务
+
+        Args:
+            无
+
+        Returns:
+            None
+        """
         self.embedding_service = None
         self.vector_store = None
         self.document_service = None
@@ -119,7 +183,16 @@ class SearchService:
         }
 
     async def initialize(self):
-        """初始化搜索服务"""
+        """初始化搜索服务
+
+        初始化嵌入向量服务、向量存储和文档服务实例。
+
+        Args:
+            无
+
+        Returns:
+            None
+        """
         try:
             self.embedding_service = await get_embedding_service()
             self.vector_store = await get_vector_store()
@@ -139,14 +212,26 @@ class SearchService:
         """
         统一搜索入口
 
+        根据搜索选项执行向量搜索、混合搜索或关键词搜索，并进行后处理
+        （合并块、重排序、高亮、摘要、多样性过滤）。
+
         Args:
-            query: 搜索查询
-            options: 搜索选项
-            filters: 搜索过滤器
-            user_id: 用户ID
+            query: 搜索查询文本
+            options: 搜索选项（SearchOptions），包括搜索类型、返回数量等配置
+            filters: 搜索过滤器（SearchFilter），包括文档ID、文件名、文件类型等过滤条件
+            user_id: 用户ID，用于记录搜索历史
 
         Returns:
-            搜索结果
+            返回包含搜索结果的字典，关键字段：
+            - query: 原始查询文本
+            - results: EnhancedSearchResult 的字典列表，每项包含 doc_id、file_name、
+              chunks、max_score、avg_score、rank、highlighted_text、summary、metadata 等
+            - total_results: 结果总数
+            - search_time: 搜索耗时（秒）
+            - search_type: 搜索类型
+            - error: 错误信息（搜索失败时返回）
+            - options: 实际使用的搜索选项
+            - timestamp: 时间戳
         """
         if not query or not query.strip():
             return self._empty_search_result(query, "查询不能为空")
@@ -229,7 +314,18 @@ class SearchService:
     async def _vector_search(
         self, query: str, options: SearchOptions, filters: SearchFilter
     ) -> list[EnhancedSearchResult]:
-        """向量搜索"""
+        """向量搜索
+
+        使用嵌入向量在向量存储中执行相似度搜索。
+
+        Args:
+            query: 搜索查询文本
+            options: 搜索选项
+            filters: 搜索过滤器
+
+        Returns:
+            EnhancedSearchResult 列表，按分数降序排列；搜索失败时返回空列表
+        """
         try:
             # 生成查询向量
             query_embedding = await self.embedding_service.get_embedding(query)
@@ -257,7 +353,18 @@ class SearchService:
     async def _hybrid_search(
         self, query: str, options: SearchOptions, filters: SearchFilter
     ) -> list[EnhancedSearchResult]:
-        """混合搜索（向量 + 关键词）"""
+        """混合搜索（向量 + 关键词）
+
+        同时执行向量搜索和关键词搜索，并将结果合并排序。
+
+        Args:
+            query: 搜索查询文本
+            options: 搜索选项
+            filters: 搜索过滤器
+
+        Returns:
+            合并排序后的 EnhancedSearchResult 列表；搜索失败时返回空列表
+        """
         try:
             # 向量搜索
             vector_results = await self._vector_search(query, options, filters)
@@ -279,7 +386,18 @@ class SearchService:
     async def _keyword_search(
         self, query: str, options: SearchOptions, filters: SearchFilter
     ) -> list[EnhancedSearchResult]:
-        """关键词搜索"""
+        """关键词搜索
+
+        通过关键词匹配在文档文本中进行搜索。
+
+        Args:
+            query: 搜索查询文本
+            options: 搜索选项
+            filters: 搜索过滤器
+
+        Returns:
+            EnhancedSearchResult 列表，按分数降序排列；搜索失败时返回空列表
+        """
         try:
             # 获取所有文档
             all_documents = await self.vector_store.list_documents()
@@ -337,7 +455,17 @@ class SearchService:
     async def _apply_filters(
         self, search_results: list[SearchResult], filters: SearchFilter
     ) -> list[SearchResult]:
-        """应用搜索过滤器"""
+        """应用搜索过滤器
+
+        根据文件名、文件类型、日期范围和元数据条件过滤搜索结果。
+
+        Args:
+            search_results: 原始搜索结果列表（SearchResult）
+            filters: 搜索过滤器（SearchFilter）
+
+        Returns:
+            过滤后的 SearchResult 列表
+        """
         filtered_results = []
 
         for result in search_results:
@@ -384,7 +512,16 @@ class SearchService:
     async def _convert_to_enhanced_results(
         self, search_results: list[SearchResult]
     ) -> list[EnhancedSearchResult]:
-        """转换为增强搜索结果"""
+        """转换为增强搜索结果
+
+        将原始 SearchResult 列表转换为 EnhancedSearchResult 列表。
+
+        Args:
+            search_results: 原始搜索结果列表（SearchResult）
+
+        Returns:
+            EnhancedSearchResult 列表
+        """
         enhanced_results = []
 
         for result in search_results:
@@ -415,7 +552,17 @@ class SearchService:
     async def _merge_chunks(
         self, results: list[EnhancedSearchResult]
     ) -> list[EnhancedSearchResult]:
-        """合并同一文档的多个块"""
+        """合并同一文档的多个块
+
+        将同一文档的多个 EnhancedSearchResult 合并为一个，合并分块列表并更新分数。
+
+        Args:
+            results: 增强搜索结果列表（EnhancedSearchResult）
+
+        Returns:
+            合并后的 EnhancedSearchResult 列表，按最大分数降序排列，
+            更新排序位置，每个文档最多保留 5 个最佳块
+        """
         doc_groups = defaultdict(list)
 
         # 按文档ID分组
@@ -463,7 +610,17 @@ class SearchService:
     async def _rerank_results(
         self, results: list[EnhancedSearchResult], query: str
     ) -> list[EnhancedSearchResult]:
-        """重新排序结果"""
+        """重新排序结果
+
+        基于查询词覆盖率对搜索结果进行重排序，结合原始分数和文本覆盖率。
+
+        Args:
+            results: 增强搜索结果列表（EnhancedSearchResult）
+            query: 搜索查询文本
+
+        Returns:
+            重排序后的 EnhancedSearchResult 列表，更新 max_score、avg_score 和 rank
+        """
         try:
             # 这里可以集成更复杂的重排序模型
             # 目前使用简单的文本相似度重排序
@@ -500,7 +657,18 @@ class SearchService:
     async def _add_highlights(
         self, results: list[EnhancedSearchResult], query: str
     ) -> list[EnhancedSearchResult]:
-        """添加高亮"""
+        """添加高亮
+
+        为每个文本块添加关键词高亮标记。
+
+        Args:
+            results: 增强搜索结果列表（EnhancedSearchResult）
+            query: 搜索查询文本
+
+        Returns:
+            更新了 highlighted_text 字段的 EnhancedSearchResult 列表，
+            每个块的 chunks 中包含 highlighted_text 字段
+        """
         query_words = query.lower().split()
 
         for result in results:
@@ -523,7 +691,18 @@ class SearchService:
     def _highlight_text(
         self, text: str, query_words: list[str], max_length: int = 300
     ) -> str:
-        """高亮文本中的关键词"""
+        """高亮文本中的关键词
+
+        在文本中搜索关键词并添加 ** 高亮标记，返回包含匹配上下文的摘要片段。
+
+        Args:
+            text: 原始文本
+            query_words: 查询词列表
+            max_length: 返回摘要的最大长度
+
+        Returns:
+            包含高亮标记（**关键词**）的文本摘要片段，前后可能带有省略号
+        """
         try:
             text_lower = text.lower()
 
@@ -562,7 +741,17 @@ class SearchService:
     async def _add_summaries(
         self, results: list[EnhancedSearchResult], query: str
     ) -> list[EnhancedSearchResult]:
-        """添加摘要（可以集成大语言模型）"""
+        """添加摘要（可以集成大语言模型）
+
+        为每个搜索结果生成文本摘要，当前策略是取最高分块的开头部分。
+
+        Args:
+            results: 增强搜索结果列表（EnhancedSearchResult）
+            query: 搜索查询文本（保留以支持未来 LLM 摘要集成）
+
+        Returns:
+            更新了 summary 字段的 EnhancedSearchResult 列表
+        """
         for result in results:
             # 简单的摘要：取最相关的块的开头
             if result.chunks:
@@ -577,7 +766,17 @@ class SearchService:
     async def _apply_diversity_filter(
         self, results: list[EnhancedSearchResult], threshold: float
     ) -> list[EnhancedSearchResult]:
-        """应用多样性过滤，避免过于相似的结果"""
+        """应用多样性过滤，避免过于相似的结果
+
+        基于文本相似度过滤相似度高于阈值的重复结果，确保返回结果多样化。
+
+        Args:
+            results: 增强搜索结果列表（EnhancedSearchResult）
+            threshold: 相似度阈值（0.0-1.0），高于此值视为相似结果
+
+        Returns:
+            多样性过滤后的 EnhancedSearchResult 列表，始终保留第一个结果
+        """
         if not results or threshold >= 1.0:
             return results
 
@@ -603,7 +802,17 @@ class SearchService:
         return diverse_results
 
     def _calculate_text_similarity(self, text1: str, text2: str) -> float:
-        """计算文本相似度"""
+        """计算文本相似度
+
+        基于 Jaccard 相似度（词集交集/并集）计算两段文本的相似度。
+
+        Args:
+            text1: 第一段文本
+            text2: 第二段文本
+
+        Returns:
+            相似度分数（0.0-1.0），0 表示完全不相似，1 表示完全相同的词集
+        """
         words1 = set(text1.lower().split())
         words2 = set(text2.lower().split())
 
@@ -621,7 +830,19 @@ class SearchService:
         keyword_results: list[EnhancedSearchResult],
         query: str,
     ) -> list[EnhancedSearchResult]:
-        """合并向量搜索和关键词搜索结果"""
+        """合并向量搜索和关键词搜索结果
+
+        以向量搜索结果为主（权重 0.7），关键词搜索为辅（权重 0.3），
+        按文档ID合并并去重。
+
+        Args:
+            vector_results: 向量搜索结果列表
+            keyword_results: 关键词搜索结果列表
+            query: 搜索查询文本（保留以支持未来扩展）
+
+        Returns:
+            合并排序后的 EnhancedSearchResult 列表，按分数降序排列
+        """
         combined_map = {}
 
         # 添加向量搜索结果
@@ -660,7 +881,16 @@ class SearchService:
         return combined_results
 
     def _extract_keywords(self, query: str) -> list[str]:
-        """提取关键词"""
+        """提取关键词
+
+        从查询文本中提取有意义的搜索关键词，过滤停用词和单字符词。
+
+        Args:
+            query: 搜索查询文本
+
+        Returns:
+            提取出的关键词列表，已过滤停用词
+        """
         # 简单的关键词提取
         words = re.findall(r"\b\w+\b", query.lower())
         # 过滤停用词
@@ -694,7 +924,17 @@ class SearchService:
     def _calculate_keyword_score(
         self, doc_details: dict[str, Any], keywords: list[str]
     ) -> float:
-        """计算关键词匹配分数"""
+        """计算关键词匹配分数
+
+        基于关键词在文档文本块中的出现频率计算匹配分数。
+
+        Args:
+            doc_details: 文档详情字典，包含 chunks 列表（每项有 text 字段）
+            keywords: 搜索关键词列表
+
+        Returns:
+            匹配分数（0.0-1.0），表示关键词匹配密度
+        """
         if not keywords:
             return 0.0
 
@@ -713,7 +953,18 @@ class SearchService:
     def _find_best_matching_chunks(
         self, chunks: list[dict[str, Any]], keywords: list[str], top_k: int
     ) -> list[dict[str, Any]]:
-        """找到最佳匹配的文本块"""
+        """找到最佳匹配的文本块
+
+        在文档的分块中找出与关键词匹配度最高的 top_k 个块，并计算标准化分数。
+
+        Args:
+            chunks: 文档块列表，每项包含 text 字段
+            keywords: 搜索关键词列表
+            top_k: 返回的最大块数量
+
+        Returns:
+            匹配分数最高的 top_k 个块列表，每项包含原字段和 score（标准化匹配分数）
+        """
         scored_chunks = []
 
         for chunk in chunks:
@@ -739,7 +990,18 @@ class SearchService:
     def _generate_cache_key(
         self, query: str, options: SearchOptions, filters: SearchFilter
     ) -> str:
-        """生成缓存键"""
+        """生成缓存键
+
+        基于查询文本、搜索选项和过滤器生成 MD5 缓存键。
+
+        Args:
+            query: 搜索查询文本
+            options: 搜索选项
+            filters: 搜索过滤器
+
+        Returns:
+            MD5 哈希字符串作为缓存键
+        """
         key_parts = [
             query,
             options.search_type,
@@ -752,7 +1014,16 @@ class SearchService:
         return hashlib.md5(key_string.encode()).hexdigest()
 
     def _get_from_cache(self, cache_key: str) -> dict[str, Any] | None:
-        """从缓存获取结果"""
+        """从缓存获取结果
+
+        根据缓存键获取搜索结果，如果缓存已过期则删除并返回 None。
+
+        Args:
+            cache_key: 缓存键（MD5 哈希字符串）
+
+        Returns:
+            缓存的结果字典（若存在且未过期），否则返回 None
+        """
         if cache_key in self.search_cache:
             cache_entry = self.search_cache[cache_key]
             cache_time = datetime.fromisoformat(cache_entry["cached_at"])
@@ -766,7 +1037,17 @@ class SearchService:
         return None
 
     def _save_to_cache(self, cache_key: str, result: dict[str, Any]):
-        """保存到缓存"""
+        """保存到缓存
+
+        将搜索结果保存到缓存中，并自动清理过期缓存（缓存超过 100 项时）。
+
+        Args:
+            cache_key: 缓存键（MD5 哈希字符串）
+            result: 要缓存的结果字典
+
+        Returns:
+            None
+        """
         self.search_cache[cache_key] = {
             "result": result,
             "cached_at": datetime.now().isoformat(),
@@ -777,7 +1058,16 @@ class SearchService:
             self._cleanup_cache()
 
     def _cleanup_cache(self):
-        """清理过期缓存"""
+        """清理过期缓存
+
+        遍历缓存并删除所有已过期的条目。
+
+        Args:
+            无
+
+        Returns:
+            None
+        """
         current_time = datetime.now()
         expired_keys = []
 
@@ -797,7 +1087,21 @@ class SearchService:
         result_count: int,
         user_id: str | None = None,
     ):
-        """记录搜索历史和统计"""
+        """记录搜索历史和统计
+
+        保存搜索记录到历史列表，并更新搜索统计数据（总搜索次数、平均搜索时间、
+        热门查询、搜索类型分布）。
+
+        Args:
+            query: 搜索查询文本
+            options: 搜索选项
+            search_time: 搜索耗时（秒）
+            result_count: 结果数量
+            user_id: 用户ID
+
+        Returns:
+            None
+        """
         try:
             # 更新统计
             self.search_stats["total_searches"] += 1
@@ -829,7 +1133,23 @@ class SearchService:
             logger.error(f"记录搜索失败: {e}")
 
     def _empty_search_result(self, query: str, message: str) -> dict[str, Any]:
-        """返回空搜索结果"""
+        """返回空搜索结果
+
+        构建并返回一个表示搜索失败或无效查询的空结果字典。
+
+        Args:
+            query: 原始查询文本
+            message: 错误或提示信息
+
+        Returns:
+            空搜索结果字典，关键字段：
+            - query: 原始查询文本
+            - results: 空列表
+            - total_results: 0
+            - search_time: 0.0
+            - error: 错误信息
+            - timestamp: 时间戳
+        """
         return {
             "query": query,
             "results": [],
@@ -842,7 +1162,17 @@ class SearchService:
     async def get_search_suggestions(
         self, partial_query: str, limit: int = 5
     ) -> list[str]:
-        """获取搜索建议"""
+        """获取搜索建议
+
+        基于历史热门查询为部分输入提供搜索建议。
+
+        Args:
+            partial_query: 部分查询文本
+            limit: 返回建议的最大数量
+
+        Returns:
+            搜索建议列表（字符串），按流行度降序排列；获取失败时返回空列表
+        """
         try:
             # 基于搜索历史提供建议
             suggestions = []
@@ -862,7 +1192,23 @@ class SearchService:
             return []
 
     async def get_search_statistics(self) -> dict[str, Any]:
-        """获取搜索统计"""
+        """获取搜索统计
+
+        获取搜索服务的统计信息，包括总搜索次数、平均搜索时间、热门查询等。
+
+        Args:
+            无
+
+        Returns:
+            搜索统计信息字典，关键字段：
+            - total_searches: 总搜索次数
+            - avg_search_time: 平均搜索耗时（秒）
+            - popular_queries: 热门查询列表，每项包含 query（查询文本）和 count（次数）
+            - search_types: 搜索类型分布字典
+            - cache_size: 缓存条目数
+            - history_size: 历史记录数
+            获取失败时返回空字典
+        """
         try:
             # 获取最受欢迎的查询
             popular_queries = sorted(
@@ -887,12 +1233,30 @@ class SearchService:
             return {}
 
     async def clear_cache(self):
-        """清理缓存"""
+        """清理缓存
+
+        清空搜索缓存中的所有条目。
+
+        Args:
+            无
+
+        Returns:
+            None
+        """
         self.search_cache.clear()
         logger.info("搜索缓存已清理")
 
     async def cleanup(self):
-        """清理搜索服务资源"""
+        """清理搜索服务资源
+
+        清空搜索缓存和历史记录，释放服务资源。
+
+        Args:
+            无
+
+        Returns:
+            None
+        """
         try:
             self.search_cache.clear()
             self.search_history.clear()
@@ -906,7 +1270,16 @@ _search_service: SearchService | None = None
 
 
 async def get_search_service() -> SearchService:
-    """获取全局搜索服务实例"""
+    """获取全局搜索服务实例
+
+    获取或创建全局唯一的 SearchService 单例实例。
+
+    Args:
+        无
+
+    Returns:
+        SearchService: 已初始化的搜索服务实例
+    """
     global _search_service
 
     if _search_service is None:
@@ -917,7 +1290,16 @@ async def get_search_service() -> SearchService:
 
 
 async def cleanup_search_service():
-    """清理全局搜索服务"""
+    """清理全局搜索服务
+
+    清理并销毁全局 SearchService 实例，释放资源。
+
+    Args:
+        无
+
+    Returns:
+        None
+    """
     global _search_service
 
     if _search_service:

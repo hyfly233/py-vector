@@ -19,7 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 class FAISSVectorStore(VectorStore):
-    """FAISS 向量存储实现"""
+    """FAISS 向量存储实现
+
+    Args:
+        dimension: 向量维度，默认使用配置值
+        index_type: 索引类型，默认 IndexFlatIP
+        storage_path: 索引存储路径，默认使用配置值
+    """
 
     def __init__(
         self,
@@ -59,7 +65,11 @@ class FAISSVectorStore(VectorStore):
         }
 
     async def initialize(self) -> bool:
-        """初始化 FAISS 索引"""
+        """初始化 FAISS 索引
+
+        Returns:
+            bool: 初始化是否成功
+        """
         try:
             # 尝试加载已有索引
             if self.index_file.exists() and self.metadata_file.exists():
@@ -83,6 +93,16 @@ class FAISSVectorStore(VectorStore):
     async def add_documents(
         self, documents: list[Document], embeddings: np.ndarray, batch_size: int = 100
     ) -> bool:
+        """批量添加文档及其嵌入向量到 FAISS 索引
+
+        Args:
+            documents: 文档对象列表
+            embeddings: 嵌入向量数组，形状为 (len(documents), dimension)
+            batch_size: 每批处理的文档数量，默认 100
+
+        Returns:
+            bool: 添加是否成功
+        """
         if len(documents) != len(embeddings):
             raise ValueError(
                 f"文档数量({len(documents)})与嵌入向量数量({len(embeddings)})不匹配"
@@ -135,6 +155,17 @@ class FAISSVectorStore(VectorStore):
         filter_doc_ids: list[str] | None = None,
         min_score: float = 0.0,
     ) -> list[SearchResult]:
+        """在 FAISS 索引中搜索相似文档
+
+        Args:
+            query_embedding: 查询向量
+            top_k: 返回的最匹配结果数量，默认 10
+            filter_doc_ids: 可选的文档 ID 过滤列表
+            min_score: 最小相似度分数阈值，默认 0.0
+
+        Returns:
+            list[SearchResult]: 搜索结果列表，按相似度降序排列
+        """
         if self.index is None or self.index.ntotal == 0:
             return []
 
@@ -163,6 +194,14 @@ class FAISSVectorStore(VectorStore):
         return results
 
     async def delete_document(self, doc_id: str) -> dict:
+        """从 FAISS 索引删除文档（标记删除）
+
+        Args:
+            doc_id: 要删除的文档 ID
+
+        Returns:
+            dict: 删除结果，包含 status、deleted_chunks 和 message
+        """
         try:
             with self._lock:
                 if doc_id not in self.doc_id_to_idx:
@@ -192,6 +231,14 @@ class FAISSVectorStore(VectorStore):
             return {"status": "error", "message": str(e)}
 
     async def get_document(self, doc_id: str) -> list[Document] | None:
+        """获取 FAISS 中文档的所有块
+
+        Args:
+            doc_id: 文档 ID
+
+        Returns:
+            list[Document] | None: 文档的文本块列表（已排序）
+        """
         if doc_id not in self.doc_id_to_idx:
             return None
 
@@ -209,6 +256,14 @@ class FAISSVectorStore(VectorStore):
     async def list_documents(
         self, include_deleted: bool = False
     ) -> list[dict[str, Any]]:
+        """列出 FAISS 索引中的所有文档
+
+        Args:
+            include_deleted: 是否包含已标记删除的文档，默认 False
+
+        Returns:
+            list[dict[str, Any]]: 文档摘要信息列表
+        """
         doc_map: dict[str, dict[str, Any]] = {}
 
         for doc in self.documents:
@@ -228,6 +283,11 @@ class FAISSVectorStore(VectorStore):
         return list(doc_map.values())
 
     async def get_stats(self) -> dict[str, Any]:
+        """获取 FAISS 索引统计信息
+
+        Returns:
+            dict[str, Any]: 向量存储统计信息
+        """
         await self._update_stats()
         return {
             **self._stats.copy(),
@@ -236,6 +296,11 @@ class FAISSVectorStore(VectorStore):
         }
 
     async def _update_stats(self):
+        """更新内部统计信息
+
+        Returns:
+            None
+        """
         active_docs = [
             doc for doc in self.documents if not doc.metadata.get("deleted", False)
         ]
@@ -253,7 +318,11 @@ class FAISSVectorStore(VectorStore):
             self._stats["created_at"] = datetime.now().isoformat()
 
     async def rebuild_index(self) -> bool:
-        """重建索引（清理标记删除的数据）"""
+        """重建索引（清理标记删除的数据）
+
+        Returns:
+            bool: 重建是否成功
+        """
         try:
             with self._lock:
                 active_docs = [
@@ -314,7 +383,14 @@ class FAISSVectorStore(VectorStore):
             return False
 
     async def backup_index(self, backup_path: str) -> bool:
-        """备份索引文件"""
+        """备份索引文件
+
+        Args:
+            backup_path: 备份目标目录路径
+
+        Returns:
+            bool: 备份是否成功
+        """
         try:
             backup_dir = Path(backup_path)
             backup_dir.mkdir(parents=True, exist_ok=True)
@@ -342,7 +418,11 @@ class FAISSVectorStore(VectorStore):
     # ------------------------------------------------------------------
 
     async def _save_index(self):
-        """保存索引到磁盘"""
+        """保存索引到磁盘
+
+        Returns:
+            None
+        """
         try:
             loop = asyncio.get_event_loop()
 
@@ -402,7 +482,11 @@ class FAISSVectorStore(VectorStore):
             raise
 
     async def _load_index(self):
-        """从磁盘加载索引"""
+        """从磁盘加载索引
+
+        Returns:
+            None
+        """
         loop = asyncio.get_event_loop()
 
         def _load():
@@ -442,7 +526,11 @@ class FAISSVectorStore(VectorStore):
         }
 
     async def cleanup(self):
-        """清理资源"""
+        """清理 FAISS 资源
+
+        Returns:
+            None
+        """
         try:
             if self._executor:
                 self._executor.shutdown(wait=True)

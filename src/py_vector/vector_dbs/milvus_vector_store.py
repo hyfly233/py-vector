@@ -30,6 +30,10 @@ class MilvusVectorStore(VectorStore):
     - **本地模式**（默认）：使用 ``<STORAGE_PATH>/milvus.db``，
       基于 LanceDB，无需运行 Milvus 服务
     - **服务端模式**：设置 ``MILVUS_URI`` 为 ``http://host:19530``
+
+    Args:
+        uri: Milvus 连接 URI，默认使用配置值
+        dimension: 向量维度，默认使用配置值
     """
 
     COLLECTION_NAME = "py_vector"
@@ -54,6 +58,11 @@ class MilvusVectorStore(VectorStore):
     # ------------------------------------------------------------------
 
     def _assert_client(self):
+        """断言客户端已初始化，否则抛出异常
+
+        Raises:
+            RuntimeError: 如果客户端未初始化
+        """
         if self._client is None:
             raise RuntimeError("MilvusVectorStore 未初始化，请先调用 initialize()")
 
@@ -62,6 +71,11 @@ class MilvusVectorStore(VectorStore):
     # ------------------------------------------------------------------
 
     async def initialize(self) -> bool:
+        """初始化 Milvus 连接和集合
+
+        Returns:
+            bool: 初始化是否成功
+        """
         try:
             from pymilvus import MilvusClient
 
@@ -79,6 +93,11 @@ class MilvusVectorStore(VectorStore):
             raise
 
     def _init_collection(self) -> bool:
+        """初始化或连接已有 Milvus 集合
+
+        Returns:
+            bool: 集合是否就绪
+        """
         self._assert_client()
 
         if self._client.has_collection(self.COLLECTION_NAME):
@@ -107,6 +126,11 @@ class MilvusVectorStore(VectorStore):
         return True
 
     async def cleanup(self):
+        """清理 Milvus 连接资源
+
+        Returns:
+            None
+        """
         if self._client:
             self._client.close()
             self._client = None
@@ -122,6 +146,16 @@ class MilvusVectorStore(VectorStore):
     async def add_documents(
         self, documents: list[Document], embeddings: np.ndarray, batch_size: int = 100
     ) -> bool:
+        """批量添加文档及其嵌入向量到 Milvus
+
+        Args:
+            documents: 文档对象列表
+            embeddings: 嵌入向量数组，形状为 (len(documents), dimension)
+            batch_size: 每批插入的文档数量，默认 100
+
+        Returns:
+            bool: 添加是否成功
+        """
         if len(documents) != len(embeddings):
             raise ValueError(
                 f"文档数量({len(documents)})与嵌入向量数量({len(embeddings)})不匹配"
@@ -167,6 +201,17 @@ class MilvusVectorStore(VectorStore):
         filter_doc_ids: list[str] | None = None,
         min_score: float = 0.0,
     ) -> list[SearchResult]:
+        """在 Milvus 中搜索相似文档
+
+        Args:
+            query_embedding: 查询向量
+            top_k: 返回的最匹配结果数量，默认 10
+            filter_doc_ids: 可选的文档 ID 过滤列表
+            min_score: 最小相似度分数阈值，默认 0.0
+
+        Returns:
+            list[SearchResult]: 搜索结果列表，按相似度降序排列
+        """
         if not self._collection_ready:
             return []
 
@@ -237,6 +282,15 @@ class MilvusVectorStore(VectorStore):
             return []
 
     async def delete_document(self, doc_id: str) -> dict:
+        """从 Milvus 删除文档
+
+        Args:
+            doc_id: 要删除的文档 ID
+
+        Returns:
+            dict: 删除结果，包含 status、deleted_chunks 和 message
+        """
+
         def _delete():
             self._assert_client()
             expr = f'{_DOC_ID_FIELD} == "{doc_id}"'

@@ -39,7 +39,11 @@ SYSTEM_PROMPT = getattr(settings, "LLM_SYSTEM_PROMPT", None) or DEFAULT_SYSTEM_P
 
 
 def _build_model():
-    """根据配置创建 OpenAI 兼容模型实例"""
+    """根据配置创建 OpenAI 兼容模型实例
+
+    Returns:
+        OpenAIChatModel: 配置好的 OpenAI 聊天模型实例
+    """
     return OpenAIChatModel(
         model_name=settings.LLM_MODEL,
         provider=OpenAIProvider(
@@ -50,7 +54,11 @@ def _build_model():
 
 
 def _build_agent() -> Agent[RAGDeps, AnswerWithCitations]:
-    """创建一个新的 RAG Agent 实例"""
+    """创建一个新的 RAG Agent 实例
+
+    Returns:
+        Agent[RAGDeps, AnswerWithCitations]: 配置好的 RAG Agent 实例
+    """
     model = _build_model()
     agent = Agent[RAGDeps, AnswerWithCitations](
         model=model,
@@ -64,7 +72,11 @@ def _build_agent() -> Agent[RAGDeps, AnswerWithCitations]:
 
 
 def get_rag_agent() -> Agent[RAGDeps, AnswerWithCitations]:
-    """获取全局 RAG Agent 实例（单例，延迟初始化）"""
+    """获取全局 RAG Agent 实例（单例，延迟初始化）
+
+    Returns:
+        Agent[RAGDeps, AnswerWithCitations]: 全局 RAG Agent 单例
+    """
     global _rag_agent
     if _rag_agent is None:
         _rag_agent = _build_agent()
@@ -73,7 +85,14 @@ def get_rag_agent() -> Agent[RAGDeps, AnswerWithCitations]:
 
 
 def get_rag_deps_sync(search_service: Any) -> RAGDeps:
-    """同步获取 RAG 依赖（在已经拿到 search_service 的场景使用）"""
+    """同步获取 RAG 依赖（在已经拿到 search_service 的场景使用）
+
+    Args:
+        search_service: 搜索服务实例
+
+    Returns:
+        RAGDeps: RAG 依赖实例
+    """
     global _rag_deps
     if _rag_deps is None:
         _rag_deps = RAGDeps(search_service=search_service)
@@ -82,7 +101,11 @@ def get_rag_deps_sync(search_service: Any) -> RAGDeps:
 
 
 async def get_rag_deps() -> RAGDeps:
-    """异步获取 RAG 依赖（延迟初始化）"""
+    """异步获取 RAG 依赖（延迟初始化）
+
+    Returns:
+        RAGDeps: RAG 依赖实例
+    """
     global _rag_deps
     if _rag_deps is None:
         from py_vector.services.search_service import get_search_service
@@ -94,7 +117,14 @@ async def get_rag_deps() -> RAGDeps:
 
 
 async def cleanup_rag():
-    """清理 RAG Agent 资源"""
+    """清理 RAG Agent 资源
+
+    Args:
+        无需参数
+
+    Returns:
+        None
+    """
     global _rag_agent, _rag_deps
     _rag_agent = None
     _rag_deps = None

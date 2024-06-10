@@ -62,7 +62,11 @@ class DetailedHealthResponse(BaseModel):
 
 
 async def _check_vector_store() -> ComponentHealth:
-    """检查向量存储"""
+    """检查向量存储
+
+    Returns:
+        ComponentHealth: 向量存储组件的健康状态
+    """
     start_time = time.time()
 
     try:
@@ -103,7 +107,11 @@ async def _check_vector_store() -> ComponentHealth:
 
 
 async def _check_document_service() -> ComponentHealth:
-    """检查文档服务"""
+    """检查文档服务
+
+    Returns:
+        ComponentHealth: 文档服务组件的健康状态
+    """
     start_time = time.time()
 
     try:
@@ -142,7 +150,11 @@ async def _check_document_service() -> ComponentHealth:
 
 
 async def _check_search_service() -> ComponentHealth:
-    """检查搜索服务"""
+    """检查搜索服务
+
+    Returns:
+        ComponentHealth: 搜索服务组件的健康状态
+    """
     start_time = time.time()
 
     try:
@@ -177,7 +189,11 @@ async def _check_search_service() -> ComponentHealth:
 
 
 async def _check_storage() -> ComponentHealth:
-    """检查存储"""
+    """检查存储
+
+    Returns:
+        ComponentHealth: 存储组件的健康状态
+    """
     start_time = time.time()
 
     try:
@@ -242,7 +258,11 @@ async def _check_storage() -> ComponentHealth:
 
 
 async def _check_dependencies() -> ComponentHealth:
-    """检查依赖项"""
+    """检查依赖项
+
+    Returns:
+        ComponentHealth: 依赖项组件的健康状态
+    """
     start_time = time.time()
 
     try:
@@ -307,7 +327,11 @@ async def _check_dependencies() -> ComponentHealth:
 
 
 async def _get_system_metrics() -> SystemMetrics:
-    """获取系统指标"""
+    """获取系统指标
+
+    Returns:
+        SystemMetrics: 系统指标信息
+    """
     try:
         # CPU使用率
         cpu_percent = psutil.cpu_percent(interval=1)
@@ -353,6 +377,10 @@ class HealthChecker:
     """健康检查器"""
 
     def __init__(self):
+        """健康检查器初始化
+
+        设置启动时间、健康检查历史记录、最大历史记录条数和性能阈值。
+        """
         self.start_time = time.time()
         self.health_history: list[dict[str, Any]] = []
         self.max_history = 100  # 保留最近100次检查记录
@@ -370,7 +398,11 @@ class HealthChecker:
         }
 
     async def check_basic_health(self) -> HealthStatus:
-        """基础健康检查"""
+        """基础健康检查
+
+        Returns:
+            HealthStatus: 基础健康状态
+        """
         try:
             uptime = time.time() - self.start_time
 
@@ -388,7 +420,11 @@ class HealthChecker:
             )
 
     async def check_detailed_health(self) -> DetailedHealthResponse:
-        """详细健康检查"""
+        """详细健康检查 - 包含所有组件和指标
+
+        Returns:
+            DetailedHealthResponse: 详细健康状态
+        """
         start_time = time.time()
 
         try:
@@ -436,7 +472,11 @@ class HealthChecker:
             raise HTTPException(status_code=500, detail=f"健康检查失败: {str(e)}")
 
     async def _check_all_components(self) -> list[ComponentHealth]:
-        """检查所有组件"""
+        """检查所有组件
+
+        Returns:
+            list[ComponentHealth]: 所有组件的健康状态列表
+        """
         components = []
 
         # 并行检查所有组件
@@ -464,7 +504,11 @@ class HealthChecker:
         return components
 
     async def _check_embedding_service(self) -> ComponentHealth:
-        """检查嵌入服务"""
+        """检查嵌入服务
+
+        Returns:
+            ComponentHealth: 嵌入服务组件健康状态，包含模型名称、向量维度和设备信息
+        """
         start_time = time.time()
 
         try:
@@ -504,7 +548,11 @@ class HealthChecker:
             )
 
     async def _get_performance_metrics(self) -> dict[str, Any]:
-        """获取性能指标"""
+        """获取性能指标
+
+        Returns:
+            dict: 性能指标数据
+        """
         try:
             # 计算平均响应时间
             if self.health_history:
@@ -545,7 +593,15 @@ class HealthChecker:
     def _calculate_overall_status(
         self, components: list[ComponentHealth], system_metrics: SystemMetrics
     ) -> str:
-        """计算总体状态"""
+        """计算总体状态
+
+        Args:
+            components (list[ComponentHealth]): 各组件健康状态列表
+            system_metrics (SystemMetrics): 系统指标
+
+        Returns:
+            str: 总体健康状态，可取值为 "healthy"、"degraded" 或 "unhealthy"
+        """
         # 检查组件状态
         unhealthy_components = [c for c in components if c.status == "unhealthy"]
         degraded_components = [c for c in components if c.status == "degraded"]
@@ -572,7 +628,14 @@ class HealthChecker:
             return "healthy"
 
     def get_health_history(self, hours: int = 24) -> list[dict[str, Any]]:
-        """获取健康检查历史"""
+        """获取健康检查历史
+
+        Args:
+            hours (int): 查询的小时范围，默认 24 小时
+
+        Returns:
+            list[dict]: 健康检查历史记录列表
+        """
         cutoff_time = datetime.now() - timedelta(hours=hours)
 
         return [
@@ -588,19 +651,31 @@ health_checker = HealthChecker()
 
 @router.get("/", response_model=HealthStatus)
 async def basic_health_check():
-    """基础健康检查 - 快速响应"""
+    """基础健康检查 - 快速响应
+
+    Returns:
+        HealthStatus: 基础健康状态
+    """
     return await health_checker.check_basic_health()
 
 
 @router.get("/detailed", response_model=DetailedHealthResponse)
 async def detailed_health_check():
-    """详细健康检查 - 包含所有组件和指标"""
+    """详细健康检查 - 包含所有组件和指标
+
+    Returns:
+        DetailedHealthResponse: 详细健康状态
+    """
     return await health_checker.check_detailed_health()
 
 
 @router.get("/components")
 async def component_health_check():
-    """组件健康检查"""
+    """组件健康检查
+
+    Returns:
+        dict: 组件健康检查结果
+    """
     components = await health_checker._check_all_components()
 
     return {
@@ -617,7 +692,11 @@ async def component_health_check():
 
 @router.get("/metrics")
 async def system_metrics():
-    """系统指标"""
+    """系统指标
+
+    Returns:
+        dict: 系统指标结果
+    """
     metrics = await _get_system_metrics()
     performance = await health_checker._get_performance_metrics()
 
@@ -630,7 +709,14 @@ async def system_metrics():
 
 @router.get("/history")
 async def health_history(hours: int = 24):
-    """健康检查历史"""
+    """健康检查历史
+
+    Args:
+        hours (int): 查询的小时范围，默认 24 小时
+
+    Returns:
+        dict: 健康检查历史
+    """
     history = health_checker.get_health_history(hours)
 
     return {"period_hours": hours, "total_records": len(history), "history": history}
@@ -638,7 +724,11 @@ async def health_history(hours: int = 24):
 
 @router.get("/readiness")
 async def readiness_check():
-    """就绪检查 - K8s readiness probe"""
+    """就绪检查 - K8s readiness probe
+
+    Returns:
+        dict: 就绪状态，包含 status（状态）和 timestamp（时间戳）；未就绪时返回 503
+    """
     try:
         # 检查关键组件是否就绪
         embedding_service = await get_embedding_service()
@@ -655,7 +745,11 @@ async def readiness_check():
 
 @router.get("/liveness")
 async def liveness_check():
-    """存活检查 - K8s liveness probe"""
+    """存活检查 - K8s liveness probe
+
+    Returns:
+        dict: 存活状态，包含 status（状态）和 timestamp（时间戳）
+    """
     try:
         # 简单的存活检查
         return {"status": "alive", "timestamp": datetime.now().isoformat()}
@@ -666,7 +760,11 @@ async def liveness_check():
 
 @router.get("/startup")
 async def startup_check():
-    """启动检查 - K8s startup probe"""
+    """启动检查 - K8s startup probe
+
+    Returns:
+        dict: 启动状态，包含 status（状态）、uptime（运行时间）和 timestamp（时间戳）
+    """
     try:
         uptime = time.time() - health_checker.start_time
 
@@ -695,7 +793,11 @@ async def startup_check():
 
 @router.get("/version")
 async def version_info():
-    """版本信息"""
+    """版本信息
+
+    Returns:
+        dict: 版本信息
+    """
     import platform
     import sys
 

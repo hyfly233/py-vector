@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.scripts]
-py-vector = "py_rag.main:main"
+py-vector = "py_vector.main:main"
 
 [[tool.uv.index]]
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"

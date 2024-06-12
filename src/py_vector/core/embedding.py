@@ -98,7 +98,7 @@ class EmbeddingService:
             try:
                 response = await self.client.embeddings.create(
                     model=self.model_name,
-                    input=text.strip(),
+                    input=[text.strip()],
                 )
 
                 embedding = np.array(response.data[0].embedding, dtype=np.float32)
@@ -213,7 +213,7 @@ class EmbeddingService:
             try:
                 response = self._sync_client.embeddings.create(
                     model=self.model_name,
-                    input=text.strip(),
+                    input=[text.strip()],
                 )
 
                 embedding = np.array(response.data[0].embedding, dtype=np.float32)

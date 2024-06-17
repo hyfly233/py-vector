@@ -137,10 +137,28 @@ pre { background: #0f1117; border: 1px solid #2e303a; border-radius: 4px; paddin
 
 <script>
 const BASE = '/api/v1';
+const OUT = {
+  docs: document.getElementById('o-docs'),
+  search: document.getElementById('o-search'),
+  rag: document.getElementById('o-rag'),
+  health: document.getElementById('o-health'),
+};
+const SPAN = {
+  's-docs-get': document.getElementById('s-docs-get'),
+  's-docs-status': document.getElementById('s-docs-status'),
+  's-docs-del': document.getElementById('s-docs-del'),
+  's-docs-upload': document.getElementById('s-docs-upload'),
+  's-docs-list': document.getElementById('s-docs-list'),
+  's-docs-stats': document.getElementById('s-docs-stats'),
+  's-docs-rebuild': document.getElementById('s-docs-rebuild'),
+  's-docs-backup': document.getElementById('s-docs-backup'),
+};
 
 function outputId(path) {
   const m = path.match(/^\/(\w+)/);
-  return m ? 'o-'+m[1] : 'o-health';
+  if (!m) return 'o-health';
+  const map = { documents: 'docs', health: 'health', search: 'search', rag: 'rag' };
+  return 'o-' + (map[m[1]] || m[1]);
 }
 
 async function call(method, path, body) {
@@ -156,21 +174,57 @@ async function call(method, path, body) {
     }
     const r = await fetch(BASE + path, opt);
     const data = method === 'DELETE' && r.status === 204 ? { message: '已删除' } : await r.json();
-    out.textContent = JSON.stringify(data, null, 2);
+    if (out) out.textContent = JSON.stringify(data, null, 2);
     if (span) { span.textContent = '✓'; span.className = 'status ok'; }
     return data;
   } catch (e) {
-    out.textContent = '请求失败: ' + e.message;
+    if (out) out.textContent = '请求失败: ' + e.message;
     if (span) { span.textContent = '✗'; span.className = 'status err'; }
   }
 }
 
+function fetchAndShow(url, outKey, spanId) {
+  const out = OUT[outKey];
+  const span = SPAN[spanId];
+  if (span) { span.textContent = '请求中...'; span.className = 'status'; }
+  fetch(BASE + url).then(r => r.json()).then(data => {
+    if (out) out.textContent = JSON.stringify(data, null, 2);
+    if (span) { span.textContent = '✓'; span.className = 'status ok'; }
+  }).catch(e => {
+    if (out) out.textContent = '请求失败: ' + e.message;
+    if (span) { span.textContent = '✗'; span.className = 'status err'; }
+  });
+}
+
+function postAndShow(url, body, outKey, spanId) {
+  const out = OUT[outKey];
+  const span = SPAN[spanId];
+  if (span) { span.textContent = '请求中...'; span.className = 'status'; }
+  fetch(BASE + url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(r => r.json()).then(data => {
+    if (out) out.textContent = JSON.stringify(data, null, 2);
+    if (span) { span.textContent = '✓'; span.className = 'status ok'; }
+  }).catch(e => {
+    if (out) out.textContent = '请求失败: ' + e.message;
+    if (span) { span.textContent = '✗'; span.className = 'status err'; }
+  });
+}
+
 // ---- Documents ----
 async function listDocs() {
-  const r = await fetch(BASE + '/documents/?page=1&page_size=20');
-  const data = await r.json();
-  document.getElementById('o-docs').textContent = JSON.stringify(data, null, 2);
-  const s = document.getElementById('s-docs-list'); s.textContent = '✓'; s.className = 'status ok';
+  const s = SPAN['s-docs-list']; if (s) { s.textContent='请求中...'; s.className='status'; }
+  try {
+    const r = await fetch(BASE + '/documents/?page=1&page_size=20');
+    const data = await r.json();
+    OUT.docs.textContent = JSON.stringify(data, null, 2);
+    s.textContent = '✓'; s.className = 'status ok';
+  } catch(e) {
+    OUT.docs.textContent = '请求失败: ' + e.message;
+    if (s) { s.textContent = '✗'; s.className = 'status err'; }
+  }
 }
 
 async function uploadDoc() {
@@ -178,35 +232,45 @@ async function uploadDoc() {
   if (!file) return alert('请选择文件');
   const index = document.getElementById('upload-index').checked;
   const fd = new FormData(); fd.append('file', file); fd.append('index', String(index));
-  const s = document.getElementById('s-docs-upload'); s.textContent = '上传中...'; s.className = 'status';
+  const s = SPAN['s-docs-upload']; if (s) { s.textContent = '上传中...'; s.className = 'status'; }
   try {
     const r = await fetch(BASE + '/documents/upload', { method: 'POST', body: fd });
     const data = await r.json();
-    document.getElementById('o-docs').textContent = JSON.stringify(data, null, 2);
-    s.textContent = '✓'; s.className = 'status ok';
+    OUT.docs.textContent = JSON.stringify(data, null, 2);
+    if (s) { s.textContent = '✓'; s.className = 'status ok'; }
   } catch(e) {
-    document.getElementById('o-docs').textContent = '上传失败: ' + e.message;
-    s.textContent = '✗'; s.className = 'status err';
+    OUT.docs.textContent = '上传失败: ' + e.message;
+    if (s) { s.textContent = '✗'; s.className = 'status err'; }
   }
 }
 
-function docField(prefix, suffix) {
-  return document.getElementById('doc-'+prefix+'-'+suffix)?.value;
-}
-
 async function getDoc() {
-  const id = docField('get','id'); if (!id) return alert('输入 doc_id');
-  await call('GET', '/documents/' + encodeURIComponent(id));
+  const id = document.getElementById('doc-get-id')?.value;
+  if (!id) return alert('输入 doc_id');
+  fetchAndShow('/documents/' + encodeURIComponent(id), 'docs', 's-docs-get');
 }
 
 async function getDocStatus() {
-  const id = docField('status','id'); if (!id) return alert('输入 doc_id');
-  await call('GET', '/documents/' + encodeURIComponent(id) + '/status');
+  const id = document.getElementById('doc-status-id')?.value;
+  if (!id) return alert('输入 doc_id');
+  fetchAndShow('/documents/' + encodeURIComponent(id) + '/status', 'docs', 's-docs-status');
 }
 
 async function delDoc() {
-  const id = docField('del','id'); if (!id) return alert('输入 doc_id');
-  await call('DELETE', '/documents/' + encodeURIComponent(id));
+  const id = document.getElementById('doc-del-id')?.value;
+  if (!id) return alert('输入 doc_id');
+  const out = OUT.docs;
+  const span = SPAN['s-docs-del'];
+  if (span) { span.textContent = '请求中...'; span.className = 'status'; }
+  try {
+    const r = await fetch(BASE + '/documents/' + encodeURIComponent(id), { method: 'DELETE' });
+    const data = r.status === 204 ? { message: '已删除' } : await r.json();
+    out.textContent = JSON.stringify(data, null, 2);
+    if (span) { span.textContent = '✓'; span.className = 'status ok'; }
+  } catch(e) {
+    out.textContent = '请求失败: ' + e.message;
+    if (span) { span.textContent = '✗'; span.className = 'status err'; }
+  }
 }
 
 async function backupDocs() {

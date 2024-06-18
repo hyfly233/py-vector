@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
+from logging.handlers import RotatingFileHandler
 
 import uvicorn
 from dotenv import load_dotenv
@@ -17,11 +18,23 @@ from py_vector.vector_dbs.vector_store import cleanup_vector_store
 
 load_dotenv()
 
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
+# 配置日志（控制台 + 文件滚动）
+log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+log_format = "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
+
+logging.basicConfig(level=log_level, format=log_format)
+
+log_dir = os.path.dirname(settings.LOG_FILE)
+if log_dir:
+    os.makedirs(log_dir, exist_ok=True)
+
+file_handler = RotatingFileHandler(
+    settings.LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
 )
+file_handler.setLevel(log_level)
+file_handler.setFormatter(logging.Formatter(log_format))
+logging.getLogger().addHandler(file_handler)
+
 logger = logging.getLogger(__name__)
 
 

@@ -66,6 +66,7 @@ class Settings(BaseSettings):
 
     # 日志配置
     LOG_LEVEL: str = "INFO"
+    LOG_FILE: str = "./logs/app.log"
 
     @field_validator("MODEL_GROUPS", mode="before")
     @classmethod

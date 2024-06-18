@@ -17,3 +17,4 @@ wheels/
 **/storage/**
 
 node_modules
+logs

@@ -20,7 +20,7 @@ load_dotenv()
 
 # 配置日志（控制台 + 文件滚动）
 log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
-log_format = "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
+log_format = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s"
 
 logging.basicConfig(level=log_level, format=log_format)
 

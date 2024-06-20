@@ -2,7 +2,7 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from logging.handlers import RotatingFileHandler
+from logging.handlers import TimedRotatingFileHandler
 
 import uvicorn
 from dotenv import load_dotenv
@@ -28,8 +28,8 @@ log_dir = os.path.dirname(settings.LOG_FILE)
 if log_dir:
     os.makedirs(log_dir, exist_ok=True)
 
-file_handler = RotatingFileHandler(
-    settings.LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+file_handler = TimedRotatingFileHandler(
+    settings.LOG_FILE, when="midnight", interval=1, backupCount=30, encoding="utf-8"
 )
 file_handler.setLevel(log_level)
 file_handler.setFormatter(logging.Formatter(log_format))

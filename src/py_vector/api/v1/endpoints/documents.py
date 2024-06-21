@@ -58,10 +58,9 @@ async def upload_document(
         dict: 上传结果，包含 doc_id（文档 ID）和 status（处理状态）等字段
     """
     try:
-        document_service = await get_document_service()
-
         if not file.filename:
             raise HTTPException(status_code=400, detail="文件名不能为空")
+        document_service = await get_document_service()
 
         if not document_service.document_processor.is_supported_file(file.filename):
             raise HTTPException(

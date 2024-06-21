@@ -54,7 +54,7 @@ async def _extract_from_docx(file_path: Path) -> str:
 
 
 async def _extract_from_pdf(file_path: Path) -> str:
-    """从 PDF 文件提取文本"""
+    """从 PDF 文件提取文本、表格和图片内容"""
     try:
         loop = asyncio.get_event_loop()
 
@@ -65,9 +65,31 @@ async def _extract_from_pdf(file_path: Path) -> str:
 
             for page_num in range(doc.page_count):
                 page = doc[page_num]
-                page_text = page.get_text("text")
-                if page_text.strip():
-                    text_content.append(f"[页面 {page_num + 1}]\n{page_text.strip()}")
+                page_parts = [f"[页面 {page_num + 1}]"]
+
+                # ── 1. HTML 文本（保留表格布局） ──────────────────────
+                html_text = page.get_text("html")  # type: ignore[assignment]
+                if isinstance(html_text, str) and html_text.strip():
+                    page_parts.append(html_text.strip())
+
+                # ── 2. 表格二次提取 ────────────────────────────────────
+                # TODO: 后续可启用精确表格解析，处理 get_text("html") 无法
+                #       正确还原的复杂表格（合并单元格、跨页表等）
+                #
+                # from py_vector.core.document_processor import _parse_pdf_tables
+                # table_text = _parse_pdf_tables(page)
+                # if table_text:
+                #     page_parts.append(table_text)
+
+                # ── 3. 图片记录 ─────────────────────────────────────────
+                # TODO: 后续可启用图片提取 + OCR / 多模态模型分析
+                #       提取的图片可存到 TEMP_PATH 供下游处理
+                #
+                # images_info = _collect_page_images(doc, page, page_num)
+                # if images_info:
+                #     page_parts.append(images_info)
+
+                text_content.append("\n".join(page_parts))
 
             return "\n\n".join(text_content)
 
@@ -76,6 +98,27 @@ async def _extract_from_pdf(file_path: Path) -> str:
 
     except Exception as e:
         raise Exception(f"PDF 处理失败: {e}")
+
+
+# TODO: 后续实现精确表格解析
+def _parse_pdf_tables(page) -> str:
+    """从 PDF 页面中提取表格结构（预留）
+
+    PyMuPDF 的 page.find_tables() 返回 TableFinder 对象，
+    可以获取每个表格的行列数据、表头位置等。
+    适合处理复杂表格和跨页表格（需外部拼接逻辑）。
+    """
+    raise NotImplementedError("表格精确解析尚未实现")
+
+
+# TODO: 后续实现图片提取
+def _collect_page_images(doc, page, page_num: int) -> str:
+    """提取页面中的图片并记录位置（预留）
+
+    可配合 OCR 模型（如 PaddleOCR、Tesseract）或多模态模型
+    描述图片内容，将结果嵌入文本供 RAG 检索。
+    """
+    raise NotImplementedError("图片提取尚未实现")
 
 
 async def _extract_from_text(file_path: Path) -> str:

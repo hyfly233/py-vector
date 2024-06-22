@@ -319,7 +319,7 @@ async def _extract_from_xml(file_path: Path) -> str:
 class DocumentProcessor:
     """文档处理器 - 支持多种文档格式的文本提取和处理"""
 
-    def __init__(self):
+    def __init__(self, chunk_strategy: str | None = None):
         self.supported_extensions = {
             ".docx",
             ".doc",  # Word 文档
@@ -336,6 +336,9 @@ class DocumentProcessor:
         # 文本分割配置
         self.chunk_size = settings.CHUNK_SIZE
         self.chunk_overlap = settings.CHUNK_OVERLAP
+
+        # 分块策略（可通过参数覆盖，默认走配置）
+        self.chunker = create_chunker(chunk_strategy)
 
         # 临时文件目录
         self.temp_dir = Path(settings.TEMP_PATH)
@@ -444,7 +447,7 @@ class DocumentProcessor:
         return chunks
 
     def smart_split_text(
-        self, text: str, chunk_size: int = None, overlap: int = None
+        self, text: str, chunk_size: int | None = None, overlap: int | None = None
     ) -> list[str]:
         """
         智能文本分割 - 尽量在句子边界分割

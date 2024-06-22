@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
     CHUNK_SIZE: int = 512
     CHUNK_OVERLAP: int = 50
+    CHUNKING_STRATEGY: str = "recursive"
 
     # API 配置
     ALLOWED_HOSTS: list[str] = ["*"]

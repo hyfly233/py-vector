@@ -13,6 +13,7 @@ from docx import Document
 from openpyxl import load_workbook
 
 from py_vector.config import settings
+from py_vector.core.chunking import create_chunker
 
 logger = logging.getLogger(__name__)
 

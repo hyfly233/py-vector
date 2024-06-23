@@ -403,8 +403,7 @@ class DocumentProcessor:
     def split_text(
         self, text: str, chunk_size: int = None, overlap: int = None
     ) -> list[str]:
-        """
-        将文本分割成块
+        """按固定长度分割文本（向后兼容，委托给 FixedSizeChunker）
 
         Args:
             text: 输入文本
@@ -414,118 +413,32 @@ class DocumentProcessor:
         Returns:
             文本块列表
         """
-        if not text or not text.strip():
-            return []
+        from py_vector.core.chunking.fixed_size import FixedSizeChunker
 
-        chunk_size = chunk_size or self.chunk_size
-        overlap = overlap or self.chunk_overlap
-
-        # 确保 overlap 不大于 chunk_size
-        overlap = min(overlap, chunk_size // 2)
-
-        chunks = []
-        start = 0
-        text_length = len(text)
-
-        while start < text_length:
-            end = min(start + chunk_size, text_length)
-            chunk = text[start:end].strip()
-
-            if chunk:
-                chunks.append(chunk)
-
-            # 如果已经到达文本末尾，退出循环
-            if end >= text_length:
-                break
-
-            # 计算下一个块的起始位置
-            start = end - overlap
-
-            # 避免无限循环
-            if start <= chunks.__len__() * chunk_size - overlap * chunks.__len__():
-                start = end
-
-        return chunks
+        return FixedSizeChunker().chunk(
+            text,
+            chunk_size or self.chunk_size,
+            overlap or self.chunk_overlap,
+        )
 
     def smart_split_text(
         self, text: str, chunk_size: int | None = None, overlap: int | None = None
     ) -> list[str]:
-        """
-        智能文本分割 - 尽量在句子边界分割
+        """智能文本分割（委托给当前配置的分块策略）
 
         Args:
             text: 输入文本
-            chunk_size: 块大小
-            overlap: 重叠大小
+            chunk_size: 块大小，默认使用配置值
+            overlap: 重叠大小，默认使用配置值
 
         Returns:
             文本块列表
         """
-        if not text or not text.strip():
-            return []
-
-        chunk_size = chunk_size or self.chunk_size
-        overlap = overlap or self.chunk_overlap
-
-        # 句子分隔符
-        sentence_separators = [".", "!", "?", "。", "！", "？", "\n\n"]
-
-        chunks = []
-        current_chunk = ""
-
-        # 简单的句子分割
-        temp_text = text
-        for sep in sentence_separators:
-            temp_text = temp_text.replace(sep, sep + "<SPLIT>")
-
-        parts = temp_text.split("<SPLIT>")
-
-        for part in parts:
-            part = part.strip()
-            if not part:
-                continue
-
-            # 如果当前块加上新句子不超过限制，则添加
-            if len(current_chunk) + len(part) <= chunk_size:
-                current_chunk += part
-            else:
-                # 保存当前块
-                if current_chunk.strip():
-                    chunks.append(current_chunk.strip())
-
-                # 如果单个句子太长，需要强制分割
-                if len(part) > chunk_size:
-                    # 使用基本分割方法
-                    sub_chunks = self.split_text(part, chunk_size, overlap)
-                    chunks.extend(sub_chunks[:-1])  # 除了最后一个
-                    current_chunk = sub_chunks[-1] if sub_chunks else ""
-                else:
-                    current_chunk = part
-
-        # 添加最后一个块
-        if current_chunk.strip():
-            chunks.append(current_chunk.strip())
-
-        # 应用重叠逻辑
-        if overlap > 0 and len(chunks) > 1:
-            overlapped_chunks = []
-            for i, chunk in enumerate(chunks):
-                if i == 0:
-                    overlapped_chunks.append(chunk)
-                else:
-                    # 从前一个块取 overlap 长度的文本
-                    prev_chunk = chunks[i - 1]
-                    overlap_text = (
-                        prev_chunk[-overlap:]
-                        if len(prev_chunk) > overlap
-                        else prev_chunk
-                    )
-                    overlapped_chunk = overlap_text + " " + chunk
-                    overlapped_chunks.append(overlapped_chunk)
-
-            return overlapped_chunks
-
-        return chunks
+        return self.chunker.chunk(
+            text,
+            chunk_size or self.chunk_size,
+            overlap or self.chunk_overlap,
+        )
 
     async def process_document(self, file_path: str | Path) -> dict[str, Any]:
         """

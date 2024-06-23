@@ -40,9 +40,7 @@ class RecursiveChunker(Chunker):
         chunks = self._recursive_split(text.strip(), chunk_size, 0)
         return self._apply_overlap(chunks, overlap) if overlap > 0 else chunks
 
-    def _recursive_split(
-        self, text: str, chunk_size: int, level: int
-    ) -> list[str]:
+    def _recursive_split(self, text: str, chunk_size: int, level: int) -> list[str]:
         """递归分割
 
         Args:
@@ -63,9 +61,7 @@ class RecursiveChunker(Chunker):
 
         # 使用当前层级的分隔符分割
         separator = self._SEPARATORS[level]
-        parts = [
-            p.strip() for p in separator[1].split(text) if p.strip()
-        ]
+        parts = [p.strip() for p in separator[1].split(text) if p.strip()]
 
         # 逐段合并到 chunk_size
         merged = self._merge_parts(parts, chunk_size)

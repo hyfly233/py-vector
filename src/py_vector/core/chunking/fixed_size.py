@@ -61,9 +61,7 @@ class FixedSizeChunker(Chunker):
 
         return self._apply_overlap(chunks, overlap) if overlap > 0 else chunks
 
-    def _split_by_chars(
-        self, text: str, chunk_size: int, overlap: int
-    ) -> list[str]:
+    def _split_by_chars(self, text: str, chunk_size: int, overlap: int) -> list[str]:
         """纯按字符长度分割（兜底方案）"""
         chunks = []
         start = 0

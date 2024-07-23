@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from py_vector.api.v1.api_routers import api_router
 from py_vector.config import settings
 from py_vector.core.embedding import cleanup_embedding_service
+from py_vector.core.s3 import ensure_bucket_exists
 from py_vector.core.search_engine import SearchEngine
 from py_vector.vector_dbs.vector_store import cleanup_vector_store
 
@@ -53,6 +54,12 @@ class AppLifespan:
         await self.search_engine.initialize()
         # 将搜索引擎实例存储在 FastAPI 应用状态中
         fast_api_app.state.search_engine = self.search_engine
+
+        # 初始化 S3 桶检查
+        if settings.S3_ENABLED:
+            bucket_ok = await ensure_bucket_exists()
+            if not bucket_ok:
+                logger.warning("⚠️ S3 存储桶不可用，上传功能可能异常")
 
         # 初始化其他组件
 

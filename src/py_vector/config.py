@@ -69,6 +69,27 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "./logs/app.log"
 
+    # MinIO / S3 兼容对象存储配置
+    S3_ENABLED: bool = False
+    S3_ENDPOINT: str = "http://localhost:9000"
+    S3_ACCESS_KEY: str = "minioadmin"
+    S3_SECRET_KEY: str = "minioadmin"
+    S3_BUCKET: str = "py-vector"
+    S3_REGION: str = "us-east-1"
+    S3_SECURE: bool = False  # HTTPS
+
+    # PostgreSQL 数据库配置
+    PG_ENABLED: bool = False
+    PG_HOST: str = "localhost"
+    PG_PORT: int = 5432
+    PG_USER: str = "postgres"
+    PG_PASSWORD: str = "password"
+    PG_DATABASE: str = "mydb"
+    PG_SCHEMA: str = "public"
+    PG_POOL_SIZE: int = 10
+    PG_MAX_OVERFLOW: int = 20
+    PG_ECHO: bool = False  # SQL 日志
+
     @field_validator("MODEL_GROUPS", mode="before")
     @classmethod
     def parse_model_groups(cls, v: Any) -> dict[str, list[dict[str, Any]]]:

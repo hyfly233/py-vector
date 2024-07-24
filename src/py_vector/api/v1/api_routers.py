@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from py_vector.api.v1.endpoints import documents, health, rag, search
+from py_vector.api.v1.endpoints import documents, files, health, rag, search
 
 api_router = APIRouter()
 
@@ -15,3 +15,6 @@ api_router.include_router(health.router, prefix="/health", tags=["Health"])
 
 # RAG 问答路由
 api_router.include_router(rag.router, prefix="/rag", tags=["RAG"])
+
+# 文件上传/下载路由
+api_router.include_router(files.router, prefix="/files", tags=["Files"])

@@ -440,12 +440,20 @@ class DocumentProcessor:
             overlap or self.chunk_overlap,
         )
 
-    async def process_document(self, file_path: str | Path) -> dict[str, Any]:
-        """
-        完整处理文档：提取文本 + 分割
+    async def process_document(
+        self,
+        file_path: str | Path,
+        storage_type: str = "local",
+        storage_path: str | None = None,
+    ) -> dict[str, Any]:
+        """完整处理文档：提取文本 + 分割
 
         Args:
-            file_path: 文档路径
+            file_path: 本地临时文件路径（用于处理）
+            storage_type: 文件存储类型，local 或 s3
+            storage_path: 文件永久存储路径。
+                          local 时默认等于 file_path，
+                          s3 时是 S3 对象键
 
         Returns:
             处理结果字典
@@ -453,7 +461,21 @@ class DocumentProcessor:
         file_path = Path(file_path)
         start_time = datetime.now()
 
+        # 确定最终返回的 file_path
+        resolved_storage_path = storage_path or str(file_path)
+
         try:
+            # 当文件在 S3 上时，需要先下载到本地
+            if storage_type == "s3":
+                if not file_path.exists():
+                    from py_vector.core.s3 import download_from_s3
+
+                    ok = await download_from_s3(resolved_storage_path, file_path)
+                    if not ok:
+                        raise RuntimeError(
+                            f"无法从 S3 下载文件: {resolved_storage_path}"
+                        )
+
             # 提取文本
             text = await self.extract_text(file_path)
 
@@ -466,14 +488,21 @@ class DocumentProcessor:
             # 处理时间
             processing_time = (datetime.now() - start_time).total_seconds()
 
+            # 获取文件大小
+            try:
+                file_size = file_path.stat().st_size
+            except OSError:
+                file_size = 0
+
             result = {
-                "file_path": str(file_path),
+                "file_path": resolved_storage_path,
                 "file_name": file_path.name,
-                "file_size": file_path.stat().st_size,
+                "file_size": file_size,
                 "document_hash": document_hash,
                 "text_length": len(text),
                 "chunks_count": len(chunks),
                 "chunks": chunks,
+                "storage_type": storage_type,
                 "processing_time": processing_time,
                 "processed_at": datetime.now().isoformat(),
                 "status": "success",
@@ -481,6 +510,7 @@ class DocumentProcessor:
 
             logger.info(
                 f"文档处理完成: {file_path.name}, "
+                f"存储: {storage_type}, "
                 f"文本长度: {len(text)}, 块数: {len(chunks)}, "
                 f"耗时: {processing_time:.2f}s"
             )
@@ -489,8 +519,9 @@ class DocumentProcessor:
 
         except Exception as e:
             error_result = {
-                "file_path": str(file_path),
+                "file_path": resolved_storage_path,
                 "file_name": file_path.name,
+                "storage_type": storage_type,
                 "status": "error",
                 "error": str(e),
                 "processed_at": datetime.now().isoformat(),

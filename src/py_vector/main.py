@@ -61,7 +61,10 @@ class AppLifespan:
             if not bucket_ok:
                 logger.warning("⚠️ S3 存储桶不可用，上传功能可能异常")
 
-        # 初始化其他组件
+        # 初始化数据库
+        from py_vector.core.database import init_db
+
+        await init_db()
 
         logger.info("✅ Application startup complete")
 
@@ -73,7 +76,10 @@ class AppLifespan:
             # 清理搜索引擎
             await self.search_engine.cleanup()
 
-        # 清理其他资源
+        # 清理数据库
+        from py_vector.core.database import dispose_db
+
+        await dispose_db()
 
         await cleanup_embedding_service()
         await cleanup_vector_store()

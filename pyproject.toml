@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "aiofiles>=25.1.0",
+    "asyncpg>=0.31.0",
     "chardet>=7.4.3",
     "datetime>=6.0",
     "faiss-cpu>=1.14.3",

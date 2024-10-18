@@ -23,6 +23,7 @@ dependencies = [
     "pymupdf>=1.28.0",
     "python-docx>=1.2.0",
     "requests>=2.33.0",
+    "ruff>=0.15.22",
     "torch>=2.12.1",
     "uvicorn[standard]>=0.51.0",
 ]

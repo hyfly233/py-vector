@@ -2,7 +2,7 @@ import logging
 import os
 import pickle
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any
 
 import faiss
 
@@ -42,7 +42,7 @@ class SearchEngine:
         else:
             self.index = faiss.IndexFlatIP(settings.EMBEDDING_DIMENSION)
 
-    async def add_document(self, file_path: str, document_id: str) -> Dict[str, Any]:
+    async def add_document(self, file_path: str, document_id: str) -> dict[str, Any]:
         """添加文档到索引"""
         try:
             # 处理文档
@@ -60,19 +60,21 @@ class SearchEngine:
             faiss.normalize_L2(embeddings)
 
             # 添加到索引
-            self.index.add(embeddings.astype('float32'))
+            self.index.add(embeddings.astype("float32"))
 
             # 存储文档信息
             filename = os.path.basename(file_path)
             for i, chunk in enumerate(chunks):
-                self.documents.append({
-                    'document_id': document_id,
-                    'file_path': file_path,
-                    'file_name': filename,
-                    'chunk_index': i,
-                    'text': chunk,
-                    'created_at': datetime.now().isoformat()
-                })
+                self.documents.append(
+                    {
+                        "document_id": document_id,
+                        "file_path": file_path,
+                        "file_name": filename,
+                        "chunk_index": i,
+                        "text": chunk,
+                        "created_at": datetime.now().isoformat(),
+                    }
+                )
                 self.chunks.append(chunk)
 
             # 保存索引
@@ -81,13 +83,13 @@ class SearchEngine:
             return {
                 "status": "success",
                 "chunks_count": len(chunks),
-                "message": f"成功添加 {len(chunks)} 个文本块"
+                "message": f"成功添加 {len(chunks)} 个文本块",
             }
 
         except Exception as e:
             return {"status": "error", "message": f"处理文档失败: {str(e)}"}
 
-    async def search(self, query: str, top_k: int = 5) -> List[SearchResult]:
+    async def search(self, query: str, top_k: int = 5) -> list[SearchResult]:
         """搜索文档"""
         if self.index.ntotal == 0:
             return []
@@ -99,21 +101,22 @@ class SearchEngine:
 
         # 搜索
         scores, indices = self.index.search(
-            query_embedding.astype('float32'),
-            min(top_k, self.index.ntotal)
+            query_embedding.astype("float32"), min(top_k, self.index.ntotal)
         )
 
         results = []
         for score, idx in zip(scores[0], indices[0]):
             if idx >= 0:
                 doc_info = self.documents[idx]
-                results.append(SearchResult(
-                    score=float(score),
-                    file_name=doc_info['file_name'],
-                    file_path=doc_info['file_path'],
-                    chunk_index=doc_info['chunk_index'],
-                    text=doc_info['text']
-                ))
+                results.append(
+                    SearchResult(
+                        score=float(score),
+                        file_name=doc_info["file_name"],
+                        file_path=doc_info["file_path"],
+                        chunk_index=doc_info["chunk_index"],
+                        text=doc_info["text"],
+                    )
+                )
 
         return results
 
@@ -125,15 +128,15 @@ class SearchEngine:
 
             # 保存元数据
             metadata = {
-                'documents': self.documents,
-                'chunks': self.chunks,
-                'dimension': settings.EMBEDDING_DIMENSION,
-                'model_name': settings.EMBEDDING_MODEL,
-                'saved_at': datetime.now().isoformat(),
-                'version': settings.VERSION
+                "documents": self.documents,
+                "chunks": self.chunks,
+                "dimension": settings.EMBEDDING_DIMENSION,
+                "model_name": settings.EMBEDDING_MODEL,
+                "saved_at": datetime.now().isoformat(),
+                "version": settings.VERSION,
             }
 
-            with open(self.metadata_file, 'wb') as f:
+            with open(self.metadata_file, "wb") as f:
                 pickle.dump(metadata, f)
 
             logger.info(f"索引保存成功，包含 {len(self.documents)} 个文档块")
@@ -148,26 +151,32 @@ class SearchEngine:
             self.index = faiss.read_index(self.index_file)
 
             # 加载元数据
-            with open(self.metadata_file, 'rb') as f:
+            with open(self.metadata_file, "rb") as f:
                 metadata = pickle.load(f)
 
             # 兼容性处理：处理不同版本的元数据格式
-            self.documents = metadata.get('documents', [])
-            self.chunks = metadata.get('chunks', [])
+            self.documents = metadata.get("documents", [])
+            self.chunks = metadata.get("chunks", [])
 
             # 如果 chunks 不存在，从 documents 中重建
             if not self.chunks and self.documents:
-                self.chunks = [doc.get('text', '') for doc in self.documents]
+                self.chunks = [doc.get("text", "") for doc in self.documents]
                 logger.info("从文档信息重建 chunks 列表")
 
             # 验证数据一致性
             if len(self.documents) != self.index.ntotal:
-                logger.warning(f"文档数量 ({len(self.documents)}) 与索引大小 ({self.index.ntotal}) 不匹配")
+                logger.warning(
+                    "文档数量 (%d) 与索引大小 (%d) 不匹配",
+                    len(self.documents),
+                    self.index.ntotal,
+                )
 
             # 检查维度兼容性
             expected_dim = settings.EMBEDDING_DIMENSION
-            if 'dimension' in metadata and metadata['dimension'] != expected_dim:
-                logger.warning(f"索引维度不匹配: {metadata['dimension']} vs {expected_dim}")
+            if "dimension" in metadata and metadata["dimension"] != expected_dim:
+                logger.warning(
+                    f"索引维度不匹配: {metadata['dimension']} vs {expected_dim}"
+                )
 
             logger.info(f"✅ 索引加载成功，包含 {len(self.documents)} 个文档块")
             return True
@@ -180,14 +189,16 @@ class SearchEngine:
             self.chunks = []
             return False
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """获取搜索引擎统计信息"""
         return {
-            "total_documents": len(set(doc['document_id'] for doc in self.documents)) if self.documents else 0,
+            "total_documents": len(set(doc["document_id"] for doc in self.documents))
+            if self.documents
+            else 0,
             "total_chunks": len(self.documents),
             "index_size": self.index.ntotal if self.index else 0,
             "embedding_model": settings.EMBEDDING_MODEL,
-            "index_exists": self.index is not None
+            "index_exists": self.index is not None,
         }
 
     async def cleanup(self):

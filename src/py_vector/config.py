@@ -1,5 +1,4 @@
 import os
-from typing import List
 
 from pydantic_settings import BaseSettings
 
@@ -26,7 +25,7 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 50
 
     # API 配置
-    ALLOWED_HOSTS: List[str] = ["*"]
+    ALLOWED_HOSTS: list[str] = ["*"]
     MAX_SEARCH_RESULTS: int = 20
 
     # 日志配置
@@ -40,5 +39,10 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # 确保存储目录存在
-for path in [settings.STORAGE_PATH, settings.INDEX_PATH, settings.DOCUMENTS_PATH, settings.TEMP_PATH]:
+for path in [
+    settings.STORAGE_PATH,
+    settings.INDEX_PATH,
+    settings.DOCUMENTS_PATH,
+    settings.TEMP_PATH,
+]:
     os.makedirs(path, exist_ok=True)

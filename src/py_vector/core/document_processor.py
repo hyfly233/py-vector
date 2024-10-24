@@ -3,7 +3,7 @@ import hashlib
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Union, List, Dict, Any
+from typing import Any
 
 import aiofiles
 import chardet
@@ -42,9 +42,9 @@ async def _extract_from_docx(file_path: Path) -> str:
                         if cell_text:
                             row_text.append(cell_text)
                     if row_text:
-                        paragraphs.append(' | '.join(row_text))
+                        paragraphs.append(" | ".join(row_text))
 
-            return '\n'.join(paragraphs)
+            return "\n".join(paragraphs)
 
         text = await loop.run_in_executor(None, _read_docx)
         return text
@@ -69,7 +69,7 @@ async def _extract_from_pdf(file_path: Path) -> str:
                 if page_text.strip():
                     text_content.append(f"[页面 {page_num + 1}]\n{page_text.strip()}")
 
-            return '\n\n'.join(text_content)
+            return "\n\n".join(text_content)
 
         text = await loop.run_in_executor(None, _read_pdf)
         return text
@@ -82,21 +82,21 @@ async def _extract_from_text(file_path: Path) -> str:
     """从文本文件提取内容"""
     try:
         # 检测文件编码
-        async with aiofiles.open(file_path, 'rb') as f:
+        async with aiofiles.open(file_path, "rb") as f:
             raw_data = await f.read()
             encoding_result = chardet.detect(raw_data)
-            encoding = encoding_result['encoding'] or 'utf-8'
+            encoding = encoding_result["encoding"] or "utf-8"
 
         # 读取文本
-        async with aiofiles.open(file_path, 'r', encoding=encoding) as f:
+        async with aiofiles.open(file_path, encoding=encoding) as f:
             text = await f.read()
             return text.strip()
 
     except Exception as e:
         # 尝试常见编码
-        for encoding in ['utf-8', 'gbk', 'gb2312', 'latin-1']:
+        for encoding in ["utf-8", "gbk", "gb2312", "latin-1"]:
             try:
-                async with aiofiles.open(file_path, 'r', encoding=encoding) as f:
+                async with aiofiles.open(file_path, encoding=encoding) as f:
                     text = await f.read()
                     return text.strip()
             except Exception as e:
@@ -114,7 +114,7 @@ async def _extract_from_excel(file_path: Path) -> str:
         def _read_excel():
             content = []
 
-            if file_path.suffix.lower() == '.xlsx':
+            if file_path.suffix.lower() == ".xlsx":
                 # 使用 openpyxl 读取 .xlsx
                 wb = load_workbook(file_path, read_only=True)
                 for sheet_name in wb.sheetnames:
@@ -122,8 +122,10 @@ async def _extract_from_excel(file_path: Path) -> str:
                     content.append(f"[工作表: {sheet_name}]")
 
                     for row in sheet.iter_rows(values_only=True):
-                        row_data = [str(cell) if cell is not None else '' for cell in row]
-                        row_text = ' | '.join(filter(None, row_data))
+                        row_data = [
+                            str(cell) if cell is not None else "" for cell in row
+                        ]
+                        row_text = " | ".join(filter(None, row_data))
                         if row_text.strip():
                             content.append(row_text)
                     content.append("")
@@ -135,18 +137,18 @@ async def _extract_from_excel(file_path: Path) -> str:
                     content.append(f"[工作表: {sheet_name}]")
 
                     # 添加列标题
-                    headers = ' | '.join(str(col) for col in df.columns)
+                    headers = " | ".join(str(col) for col in df.columns)
                     content.append(headers)
 
                     # 添加数据行
                     for _, row in df.iterrows():
-                        row_data = [str(val) if pd.notna(val) else '' for val in row]
-                        row_text = ' | '.join(filter(None, row_data))
+                        row_data = [str(val) if pd.notna(val) else "" for val in row]
+                        row_text = " | ".join(filter(None, row_data))
                         if row_text.strip():
                             content.append(row_text)
                     content.append("")
 
-            return '\n'.join(content)
+            return "\n".join(content)
 
         text = await loop.run_in_executor(None, _read_excel)
         return text
@@ -162,11 +164,11 @@ async def _extract_from_csv(file_path: Path) -> str:
 
         def _read_csv():
             # 尝试不同编码
-            for encoding in ['utf-8', 'gbk', 'gb2312', 'latin-1']:
+            for encoding in ["utf-8", "gbk", "gb2312", "latin-1"]:
                 try:
                     df = pd.read_csv(file_path, encoding=encoding)
                     break
-                except:
+                except Exception:
                     continue
             else:
                 raise Exception("无法识别 CSV 文件编码")
@@ -174,17 +176,17 @@ async def _extract_from_csv(file_path: Path) -> str:
             content = []
 
             # 添加列标题
-            headers = ' | '.join(str(col) for col in df.columns)
+            headers = " | ".join(str(col) for col in df.columns)
             content.append(headers)
 
             # 添加数据行
             for _, row in df.iterrows():
-                row_data = [str(val) if pd.notna(val) else '' for val in row]
-                row_text = ' | '.join(filter(None, row_data))
+                row_data = [str(val) if pd.notna(val) else "" for val in row]
+                row_text = " | ".join(filter(None, row_data))
                 if row_text.strip():
                     content.append(row_text)
 
-            return '\n'.join(content)
+            return "\n".join(content)
 
         text = await loop.run_in_executor(None, _read_csv)
         return text
@@ -198,7 +200,7 @@ async def _extract_from_json(file_path: Path) -> str:
     try:
         import json
 
-        async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+        async with aiofiles.open(file_path, encoding="utf-8") as f:
             content = await f.read()
             data = json.loads(content)
 
@@ -223,7 +225,7 @@ async def _extract_from_json(file_path: Path) -> str:
                 return texts
 
             text_parts = extract_text_from_json(data)
-            return '\n'.join(text_parts)
+            return "\n".join(text_parts)
 
     except Exception as e:
         raise Exception(f"JSON 处理失败: {e}")
@@ -262,7 +264,7 @@ async def _extract_from_xml(file_path: Path) -> str:
                 return texts
 
             text_parts = extract_xml_text(root)
-            return '\n'.join(text_parts)
+            return "\n".join(text_parts)
 
         text = await loop.run_in_executor(None, _read_xml)
         return text
@@ -276,13 +278,16 @@ class DocumentProcessor:
 
     def __init__(self):
         self.supported_extensions = {
-            '.docx', '.doc',  # Word 文档
-            '.pdf',  # PDF 文档
-            '.txt', '.md',  # 文本文档
-            '.xlsx', '.xls',  # Excel 文档
-            '.csv',  # CSV 文档
-            '.json',  # JSON 文档
-            '.xml',  # XML 文档
+            ".docx",
+            ".doc",  # Word 文档
+            ".pdf",  # PDF 文档
+            ".txt",
+            ".md",  # 文本文档
+            ".xlsx",
+            ".xls",  # Excel 文档
+            ".csv",  # CSV 文档
+            ".json",  # JSON 文档
+            ".xml",  # XML 文档
         }
 
         # 文本分割配置
@@ -293,7 +298,7 @@ class DocumentProcessor:
         self.temp_dir = Path(settings.TEMP_PATH)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
-    async def extract_text(self, file_path: Union[str, Path]):
+    async def extract_text(self, file_path: str | Path):
         """
         从文档中提取文本
 
@@ -311,7 +316,10 @@ class DocumentProcessor:
         # 检查文件大小
         file_size = file_path.stat().st_size
         if file_size > settings.MAX_FILE_SIZE:
-            raise ValueError(f"文件过大: {file_size / 1024 / 1024:.1f}MB > {settings.MAX_FILE_SIZE / 1024 / 1024}MB")
+            raise ValueError(
+                f"文件过大: {file_size / 1024 / 1024:.1f}MB"
+                f" > {settings.MAX_FILE_SIZE / 1024 / 1024}MB"
+            )
 
         # 获取文件扩展名
         extension = file_path.suffix.lower()
@@ -321,19 +329,19 @@ class DocumentProcessor:
 
         try:
             # 根据文件类型选择提取方法
-            if extension in ['.docx', '.doc']:
+            if extension in [".docx", ".doc"]:
                 text = await _extract_from_docx(file_path)
-            elif extension == '.pdf':
+            elif extension == ".pdf":
                 text = await _extract_from_pdf(file_path)
-            elif extension in ['.txt', '.md']:
+            elif extension in [".txt", ".md"]:
                 text = await _extract_from_text(file_path)
-            elif extension in ['.xlsx', '.xls']:
+            elif extension in [".xlsx", ".xls"]:
                 text = await _extract_from_excel(file_path)
-            elif extension == '.csv':
+            elif extension == ".csv":
                 text = await _extract_from_csv(file_path)
-            elif extension == '.json':
+            elif extension == ".json":
                 text = await _extract_from_json(file_path)
-            elif extension == '.xml':
+            elif extension == ".xml":
                 text = await _extract_from_xml(file_path)
             else:
                 raise ValueError(f"暂不支持的文件格式: {extension}")
@@ -345,7 +353,9 @@ class DocumentProcessor:
             logger.error(f"❌ 文本提取失败 {file_path.name}: {e}")
             raise
 
-    def split_text(self, text: str, chunk_size: int = None, overlap: int = None) -> List[str]:
+    def split_text(
+        self, text: str, chunk_size: int = None, overlap: int = None
+    ) -> list[str]:
         """
         将文本分割成块
 
@@ -390,7 +400,9 @@ class DocumentProcessor:
 
         return chunks
 
-    def smart_split_text(self, text: str, chunk_size: int = None, overlap: int = None) -> List[str]:
+    def smart_split_text(
+        self, text: str, chunk_size: int = None, overlap: int = None
+    ) -> list[str]:
         """
         智能文本分割 - 尽量在句子边界分割
 
@@ -409,18 +421,17 @@ class DocumentProcessor:
         overlap = overlap or self.chunk_overlap
 
         # 句子分隔符
-        sentence_separators = ['.', '!', '?', '。', '！', '？', '\n\n']
+        sentence_separators = [".", "!", "?", "。", "！", "？", "\n\n"]
 
         chunks = []
         current_chunk = ""
-        sentences = []
 
         # 简单的句子分割
         temp_text = text
         for sep in sentence_separators:
-            temp_text = temp_text.replace(sep, sep + '<SPLIT>')
+            temp_text = temp_text.replace(sep, sep + "<SPLIT>")
 
-        parts = temp_text.split('<SPLIT>')
+        parts = temp_text.split("<SPLIT>")
 
         for part in parts:
             part = part.strip()
@@ -457,7 +468,11 @@ class DocumentProcessor:
                 else:
                     # 从前一个块取 overlap 长度的文本
                     prev_chunk = chunks[i - 1]
-                    overlap_text = prev_chunk[-overlap:] if len(prev_chunk) > overlap else prev_chunk
+                    overlap_text = (
+                        prev_chunk[-overlap:]
+                        if len(prev_chunk) > overlap
+                        else prev_chunk
+                    )
                     overlapped_chunk = overlap_text + " " + chunk
                     overlapped_chunks.append(overlapped_chunk)
 
@@ -465,7 +480,7 @@ class DocumentProcessor:
 
         return chunks
 
-    async def process_document(self, file_path: Union[str, Path]) -> Dict[str, Any]:
+    async def process_document(self, file_path: str | Path) -> dict[str, Any]:
         """
         完整处理文档：提取文本 + 分割
 
@@ -492,32 +507,34 @@ class DocumentProcessor:
             processing_time = (datetime.now() - start_time).total_seconds()
 
             result = {
-                'file_path': str(file_path),
-                'file_name': file_path.name,
-                'file_size': file_path.stat().st_size,
-                'document_hash': document_hash,
-                'text_length': len(text),
-                'chunks_count': len(chunks),
-                'chunks': chunks,
-                'processing_time': processing_time,
-                'processed_at': datetime.now().isoformat(),
-                'status': 'success'
+                "file_path": str(file_path),
+                "file_name": file_path.name,
+                "file_size": file_path.stat().st_size,
+                "document_hash": document_hash,
+                "text_length": len(text),
+                "chunks_count": len(chunks),
+                "chunks": chunks,
+                "processing_time": processing_time,
+                "processed_at": datetime.now().isoformat(),
+                "status": "success",
             }
 
-            logger.info(f"文档处理完成: {file_path.name}, "
-                        f"文本长度: {len(text)}, 块数: {len(chunks)}, "
-                        f"耗时: {processing_time:.2f}s")
+            logger.info(
+                f"文档处理完成: {file_path.name}, "
+                f"文本长度: {len(text)}, 块数: {len(chunks)}, "
+                f"耗时: {processing_time:.2f}s"
+            )
 
             return result
 
         except Exception as e:
             error_result = {
-                'file_path': str(file_path),
-                'file_name': file_path.name,
-                'status': 'error',
-                'error': str(e),
-                'processed_at': datetime.now().isoformat(),
-                'processing_time': (datetime.now() - start_time).total_seconds()
+                "file_path": str(file_path),
+                "file_name": file_path.name,
+                "status": "error",
+                "error": str(e),
+                "processed_at": datetime.now().isoformat(),
+                "processing_time": (datetime.now() - start_time).total_seconds(),
             }
 
             logger.error(f"❌ 文档处理失败: {file_path.name}, 错误: {e}")
@@ -539,7 +556,7 @@ class DocumentProcessor:
         temp_filename = f"{timestamp}_{filename}"
         temp_path = self.temp_dir / temp_filename
 
-        async with aiofiles.open(temp_path, 'wb') as f:
+        async with aiofiles.open(temp_path, "wb") as f:
             await f.write(content)
 
         logger.info(f"✅ 临时文件已保存: {temp_path}")
@@ -557,7 +574,9 @@ class DocumentProcessor:
 
         for file_path in self.temp_dir.iterdir():
             if file_path.is_file():
-                file_age = current_time - datetime.fromtimestamp(file_path.stat().st_mtime)
+                file_age = current_time - datetime.fromtimestamp(
+                    file_path.stat().st_mtime
+                )
 
                 if file_age.total_seconds() > max_age_hours * 3600:
                     try:
@@ -570,11 +589,11 @@ class DocumentProcessor:
         if cleaned_count > 0:
             logger.info(f"清理了 {cleaned_count} 个临时文件")
 
-    def get_supported_types(self) -> List[str]:
+    def get_supported_types(self) -> list[str]:
         """获取支持的文件类型列表"""
         return list(self.supported_extensions)
 
-    def is_supported_file(self, file_path: Union[str, Path]) -> bool:
+    def is_supported_file(self, file_path: str | Path) -> bool:
         """检查文件是否被支持"""
         file_path = Path(file_path)
         return file_path.suffix.lower() in self.supported_extensions

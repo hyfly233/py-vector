@@ -18,7 +18,10 @@ from py_vector.core.vector_store import cleanup_vector_store
 load_dotenv()
 
 # 配置日志
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 
@@ -79,7 +82,7 @@ app = FastAPI(
     description="Document search API using FAISS and embeddings",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
-    swagger_ui_parameters={"syntaxHighlight": True}
+    swagger_ui_parameters={"syntaxHighlight": True},
 )
 
 # CORS 配置
@@ -96,10 +99,7 @@ app.add_middleware(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"❌ Global exception: {exc}")
-    return UJSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"}
-    )
+    return UJSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 # 请求时间记录中间件
@@ -121,21 +121,16 @@ async def root():
     return {
         "message": "Document Search API",
         "version": settings.VERSION,
-        "swagger docs": f"/docs"
+        "swagger docs": "/docs",
     }
 
 
 def main() -> None:
-    app_host: str = os.getenv('APP_HOST', '0.0.0.0')
-    app_port: int = int(os.getenv('APP_PORT', 8080))
+    app_host: str = os.getenv("APP_HOST", "0.0.0.0")
+    app_port: int = int(os.getenv("APP_PORT", 8080))
 
-    uvicorn.run(
-        app="py_vector.main:app",
-        host=app_host,
-        port=app_port,
-        reload=True
-    )
+    uvicorn.run(app="py_vector.main:app", host=app_host, port=app_port, reload=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

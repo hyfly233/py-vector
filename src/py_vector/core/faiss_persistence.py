@@ -4,7 +4,7 @@ import os
 import pickle
 import shutil
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Any
 
 import faiss
 import numpy as np
@@ -21,19 +21,21 @@ class FAISSPersistence:
 
         os.makedirs(base_path, exist_ok=True)
 
-    def save_index(self, index: faiss.Index, metadata: Dict[str, Any], config: Dict[str, Any]):
+    def save_index(
+        self, index: faiss.Index, metadata: dict[str, Any], config: dict[str, Any]
+    ):
         """保存索引、元数据和配置"""
         try:
             # 保存 FAISS 索引
             faiss.write_index(index, self.index_file)
 
             # 保存元数据（文档信息、向量ID映射等）
-            with open(self.metadata_file, 'wb') as f:
+            with open(self.metadata_file, "wb") as f:
                 pickle.dump(metadata, f)
 
             # 保存配置信息（维度、模型名称等）
-            config['saved_at'] = datetime.now().isoformat()
-            with open(self.config_file, 'w', encoding='utf-8') as f:
+            config["saved_at"] = datetime.now().isoformat()
+            with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
 
             print(f"索引保存成功: {self.index_file}")
@@ -45,18 +47,21 @@ class FAISSPersistence:
         """加载索引、元数据和配置"""
         try:
             # 检查文件是否存在
-            if not all(os.path.exists(f) for f in [self.index_file, self.metadata_file, self.config_file]):
+            if not all(
+                os.path.exists(f)
+                for f in [self.index_file, self.metadata_file, self.config_file]
+            ):
                 return None, None, None
 
             # 加载 FAISS 索引
             index = faiss.read_index(self.index_file)
 
             # 加载元数据
-            with open(self.metadata_file, 'rb') as f:
+            with open(self.metadata_file, "rb") as f:
                 metadata = pickle.load(f)
 
             # 加载配置
-            with open(self.config_file, 'r', encoding='utf-8') as f:
+            with open(self.config_file, encoding="utf-8") as f:
                 config = json.load(f)
 
             logging.info(f"✅ 索引加载成功: {index.ntotal} 个向量")
@@ -76,7 +81,9 @@ class IncrementalFAISS:
 
         os.makedirs(self.backup_path, exist_ok=True)
 
-    def save_with_backup(self, index: faiss.Index, metadata: Dict[str, Any], config: Dict[str, Any]):
+    def save_with_backup(
+        self, index: faiss.Index, metadata: dict[str, Any], config: dict[str, Any]
+    ):
         """保存并创建备份"""
         try:
             # 创建备份
@@ -103,8 +110,12 @@ class IncrementalFAISS:
     def _cleanup_old_backups(self, keep_count: int = 5):
         """清理旧备份文件"""
         try:
-            backups = [d for d in os.listdir(self.backup_path)
-                       if d.startswith("backup_") and os.path.isdir(os.path.join(self.backup_path, d))]
+            backups = [
+                d
+                for d in os.listdir(self.backup_path)
+                if d.startswith("backup_")
+                and os.path.isdir(os.path.join(self.backup_path, d))
+            ]
             backups.sort(reverse=True)
 
             for backup in backups[keep_count:]:
@@ -126,19 +137,22 @@ class ShardedFAISS:
 
         os.makedirs(base_path, exist_ok=True)
 
-    def add_to_shard(self, vectors: np.ndarray, metadata: List[Dict]):
+    def add_to_shard(self, vectors: np.ndarray, metadata: list[dict]):
         """添加向量到分片"""
         current_shard = len(self.shards) - 1 if self.shards else -1
 
         # 检查是否需要新分片
-        if current_shard < 0 or len(self.shards[current_shard]['metadata']) >= self.shard_size:
+        if (
+            current_shard < 0
+            or len(self.shards[current_shard]["metadata"]) >= self.shard_size
+        ):
             self._create_new_shard()
             current_shard = len(self.shards) - 1
 
         # 添加到当前分片
         shard = self.shards[current_shard]
-        shard['index'].add(vectors)
-        shard['metadata'].extend(metadata)
+        shard["index"].add(vectors)
+        shard["metadata"].extend(metadata)
 
     def _create_new_shard(self):
         """创建新分片"""
@@ -146,10 +160,10 @@ class ShardedFAISS:
         dimension = 128  # 根据实际情况设置
 
         shard = {
-            'id': shard_id,
-            'index': faiss.IndexFlatL2(dimension),
-            'metadata': [],
-            'file_path': os.path.join(self.base_path, f"shard_{shard_id}.faiss")
+            "id": shard_id,
+            "index": faiss.IndexFlatL2(dimension),
+            "metadata": [],
+            "file_path": os.path.join(self.base_path, f"shard_{shard_id}.faiss"),
         }
 
         self.shards.append(shard)
@@ -158,33 +172,37 @@ class ShardedFAISS:
         """保存所有分片"""
         for shard in self.shards:
             # 保存索引
-            faiss.write_index(shard['index'], shard['file_path'])
+            faiss.write_index(shard["index"], shard["file_path"])
 
             # 保存元数据
-            metadata_file = shard['file_path'].replace('.faiss', '_metadata.pkl')
-            with open(metadata_file, 'wb') as f:
-                pickle.dump(shard['metadata'], f)
+            metadata_file = shard["file_path"].replace(".faiss", "_metadata.pkl")
+            with open(metadata_file, "wb") as f:
+                pickle.dump(shard["metadata"], f)
 
     def load_all_shards(self):
         """加载所有分片"""
-        shard_files = [f for f in os.listdir(self.base_path) if f.startswith('shard_') and f.endswith('.faiss')]
+        shard_files = [
+            f
+            for f in os.listdir(self.base_path)
+            if f.startswith("shard_") and f.endswith(".faiss")
+        ]
 
         for shard_file in sorted(shard_files):
             shard_path = os.path.join(self.base_path, shard_file)
-            metadata_path = shard_path.replace('.faiss', '_metadata.pkl')
+            metadata_path = shard_path.replace(".faiss", "_metadata.pkl")
 
             # 加载索引
             index = faiss.read_index(shard_path)
 
             # 加载元数据
-            with open(metadata_path, 'rb') as f:
+            with open(metadata_path, "rb") as f:
                 metadata = pickle.load(f)
 
             shard = {
-                'id': len(self.shards),
-                'index': index,
-                'metadata': metadata,
-                'file_path': shard_path
+                "id": len(self.shards),
+                "index": index,
+                "metadata": metadata,
+                "file_path": shard_path,
             }
 
             self.shards.append(shard)
@@ -194,7 +212,7 @@ class ShardedFAISS:
 def example_basic_persistence():
     # 创建数据
     dimension = 128
-    data = np.random.random((1000, dimension)).astype('float32')
+    data = np.random.random((1000, dimension)).astype("float32")
 
     # 创建索引
     index = faiss.IndexFlatL2(dimension)
@@ -202,18 +220,18 @@ def example_basic_persistence():
 
     # 准备元数据
     metadata = {
-        'documents': [{'id': i, 'text': f'document_{i}'} for i in range(1000)],
-        'total_count': 1000
+        "documents": [{"id": i, "text": f"document_{i}"} for i in range(1000)],
+        "total_count": 1000,
     }
 
     config = {
-        'dimension': dimension,
-        'index_type': 'IndexFlatL2',
-        'model_name': 'text-embedding-ada-002'
+        "dimension": dimension,
+        "index_type": "IndexFlatL2",
+        "model_name": "text-embedding-ada-002",
     }
 
     # 保存
-    persistence = FAISSPersistence('./faiss_data')
+    persistence = FAISSPersistence("./faiss_data")
     persistence.save_index(index, metadata, config)
 
     # 加载
@@ -223,17 +241,17 @@ def example_basic_persistence():
 
 # 增量保存示例
 def example_incremental_save():
-    incremental = IncrementalFAISS('./faiss_data')
+    incremental = IncrementalFAISS("./faiss_data")
 
     # 模拟数据更新
     for i in range(5):
         dimension = 128
-        data = np.random.random((100, dimension)).astype('float32')
+        data = np.random.random((100, dimension)).astype("float32")
         index = faiss.IndexFlatL2(dimension)
         index.add(data)
 
-        metadata = {'batch': i, 'count': 100}
-        config = {'dimension': dimension, 'batch': i}
+        metadata = {"batch": i, "count": 100}
+        config = {"dimension": dimension, "batch": i}
 
         incremental.save_with_backup(index, metadata, config)
         print(f"保存批次 {i}")

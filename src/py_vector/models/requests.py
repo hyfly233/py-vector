@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import BaseModel, Field
 
 
@@ -26,7 +24,7 @@ class SearchResult(BaseModel):
 
 class SearchResponse(BaseModel):
     query: str
-    results: List[SearchResult]
+    results: list[SearchResult]
     total_results: int
     processing_time: float
 

@@ -1,7 +1,6 @@
 import logging
-from typing import Optional
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 
 from py_vector.services.document_service import get_document_service
 
@@ -14,8 +13,11 @@ logger = logging.getLogger(__name__)
     path="/",
     summary="列出文档",
 )
-async def list_documents(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
-                         include_deleted: bool = Query(False)):
+async def list_documents(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    include_deleted: bool = Query(False),
+):
     """列出文档"""
     document_service = await get_document_service()
     return await document_service.list_documents(page, page_size, include_deleted)
@@ -25,7 +27,7 @@ async def list_documents(page: int = Query(1, ge=1), page_size: int = Query(20, 
     path="/upload",
     summary="上传文档",
 )
-async def upload_document(file: UploadFile = File(...), user_id: Optional[str] = None):
+async def upload_document(file: UploadFile = File(...), user_id: str | None = None):
     """上传文档"""
     try:
         # 检查文件类型
@@ -33,8 +35,7 @@ async def upload_document(file: UploadFile = File(...), user_id: Optional[str] =
 
         if not document_service.document_processor.is_supported_file(file.filename):
             raise HTTPException(
-                status_code=400,
-                detail=f"不支持的文件类型: {file.filename}"
+                status_code=400, detail=f"不支持的文件类型: {file.filename}"
             )
 
         # 读取文件内容
@@ -42,9 +43,7 @@ async def upload_document(file: UploadFile = File(...), user_id: Optional[str] =
 
         # 处理文档
         result = await document_service.upload_and_process_document(
-            file_content=content,
-            filename=file.filename,
-            user_id=user_id
+            file_content=content, filename=file.filename, user_id=user_id
         )
 
         return result
@@ -93,8 +92,8 @@ async def delete_document(doc_id: str):
     document_service = await get_document_service()
     result = await document_service.delete_document(doc_id)
 
-    if result['status'] == 'error':
-        raise HTTPException(status_code=400, detail=result['message'])
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
 
     return result
 

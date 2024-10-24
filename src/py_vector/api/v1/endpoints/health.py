@@ -4,7 +4,7 @@ import os
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any
 
 import psutil
 from fastapi import APIRouter, HTTPException
@@ -22,6 +22,7 @@ router = APIRouter()
 
 class HealthStatus(BaseModel):
     """健康状态模型"""
+
     status: str  # healthy, degraded, unhealthy
     timestamp: str
     uptime: float
@@ -30,31 +31,34 @@ class HealthStatus(BaseModel):
 
 class ComponentHealth(BaseModel):
     """组件健康状态"""
+
     name: str
     status: str
-    response_time: Optional[float] = None
-    error: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
+    response_time: float | None = None
+    error: str | None = None
+    details: dict[str, Any] | None = None
 
 
 class SystemMetrics(BaseModel):
     """系统指标"""
+
     cpu_percent: float
     memory_percent: float
     disk_percent: float
-    load_average: List[float]
+    load_average: list[float]
     process_count: int
 
 
 class DetailedHealthResponse(BaseModel):
     """详细健康检查响应"""
+
     status: str
     timestamp: str
     uptime: float
     version: str
-    components: List[ComponentHealth]
+    components: list[ComponentHealth]
     system_metrics: SystemMetrics
-    performance_metrics: Dict[str, Any]
+    performance_metrics: dict[str, Any]
 
 
 async def _check_vector_store() -> ComponentHealth:
@@ -71,8 +75,7 @@ async def _check_vector_store() -> ComponentHealth:
 
         # 检查索引状态
         index_healthy = (
-                vector_store.index is not None and
-                stats.get('total_chunks', 0) >= 0
+            vector_store.index is not None and stats.get("total_chunks", 0) >= 0
         )
 
         status = "healthy" if index_healthy else "degraded"
@@ -82,12 +85,12 @@ async def _check_vector_store() -> ComponentHealth:
             status=status,
             response_time=response_time,
             details={
-                'total_documents': stats.get('total_documents', 0),
-                'total_chunks': stats.get('total_chunks', 0),
-                'index_size': stats.get('index_size', 0),
-                'dimension': vector_store.dimension,
-                'index_type': vector_store.index_type
-            }
+                "total_documents": stats.get("total_documents", 0),
+                "total_chunks": stats.get("total_chunks", 0),
+                "index_size": stats.get("index_size", 0),
+                "dimension": vector_store.dimension,
+                "index_type": vector_store.index_type,
+            },
         )
 
     except Exception as e:
@@ -95,7 +98,7 @@ async def _check_vector_store() -> ComponentHealth:
             name="vector_store",
             status="unhealthy",
             response_time=time.time() - start_time,
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -112,7 +115,7 @@ async def _check_document_service() -> ComponentHealth:
         response_time = time.time() - start_time
 
         # 检查服务状态
-        service_healthy = 'error' not in stats
+        service_healthy = "error" not in stats
 
         status = "healthy" if service_healthy else "degraded"
 
@@ -121,10 +124,12 @@ async def _check_document_service() -> ComponentHealth:
             status=status,
             response_time=response_time,
             details={
-                'processing_queue': len(document_service.processing_status),
-                'supported_formats': len(document_service.document_processor.get_supported_types()),
-                'temp_dir': str(document_service.document_processor.temp_dir)
-            }
+                "processing_queue": len(document_service.processing_status),
+                "supported_formats": len(
+                    document_service.document_processor.get_supported_types()
+                ),
+                "temp_dir": str(document_service.document_processor.temp_dir),
+            },
         )
 
     except Exception as e:
@@ -132,7 +137,7 @@ async def _check_document_service() -> ComponentHealth:
             name="document_service",
             status="unhealthy",
             response_time=time.time() - start_time,
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -155,11 +160,11 @@ async def _check_search_service() -> ComponentHealth:
             status=status,
             response_time=response_time,
             details={
-                'total_searches': stats.get('total_searches', 0),
-                'avg_search_time': stats.get('avg_search_time', 0),
-                'cache_size': stats.get('cache_size', 0),
-                'history_size': stats.get('history_size', 0)
-            }
+                "total_searches": stats.get("total_searches", 0),
+                "avg_search_time": stats.get("avg_search_time", 0),
+                "cache_size": stats.get("cache_size", 0),
+                "history_size": stats.get("history_size", 0),
+            },
         )
 
     except Exception as e:
@@ -167,7 +172,7 @@ async def _check_search_service() -> ComponentHealth:
             name="search_service",
             status="unhealthy",
             response_time=time.time() - start_time,
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -184,13 +189,19 @@ async def _check_storage() -> ComponentHealth:
         storage_details = {}
 
         # 检查目录存在性和权限
-        for name, path in [("data", data_path), ("index", index_path), ("temp", temp_path)]:
+        for name, path in [
+            ("data", data_path),
+            ("index", index_path),
+            ("temp", temp_path),
+        ]:
             if path.exists():
                 storage_details[f"{name}_exists"] = True
                 storage_details[f"{name}_writable"] = os.access(path, os.W_OK)
 
                 # 计算目录大小
-                total_size = sum(f.stat().st_size for f in path.rglob('*') if f.is_file())
+                total_size = sum(
+                    f.stat().st_size for f in path.rglob("*") if f.is_file()
+                )
                 storage_details[f"{name}_size_mb"] = round(total_size / 1024 / 1024, 2)
             else:
                 storage_details[f"{name}_exists"] = False
@@ -201,7 +212,7 @@ async def _check_storage() -> ComponentHealth:
         if data_path.exists():
             disk_usage = psutil.disk_usage(str(data_path))
             free_percent = (disk_usage.free / disk_usage.total) * 100
-            storage_details['disk_free_percent'] = round(free_percent, 2)
+            storage_details["disk_free_percent"] = round(free_percent, 2)
 
             if free_percent < 10:
                 status = "unhealthy"
@@ -218,7 +229,7 @@ async def _check_storage() -> ComponentHealth:
             name="storage",
             status=status,
             response_time=response_time,
-            details=storage_details
+            details=storage_details,
         )
 
     except Exception as e:
@@ -226,7 +237,7 @@ async def _check_storage() -> ComponentHealth:
             name="storage",
             status="unhealthy",
             response_time=time.time() - start_time,
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -238,7 +249,16 @@ async def _check_dependencies() -> ComponentHealth:
         dependencies = {}
 
         # 检查重要的Python包
-        required_packages = ['faiss', 'numpy', 'torch', 'transformers', 'fastapi', 'uvicorn', 'pandas', 'aiofiles']
+        required_packages = [
+            "faiss",
+            "numpy",
+            "torch",
+            "transformers",
+            "fastapi",
+            "uvicorn",
+            "pandas",
+            "aiofiles",
+        ]
 
         for package in required_packages:
             try:
@@ -250,13 +270,16 @@ async def _check_dependencies() -> ComponentHealth:
         # 检查CUDA可用性（如果需要）
         try:
             import torch
-            dependencies['cuda_available'] = torch.cuda.is_available()
+
+            dependencies["cuda_available"] = torch.cuda.is_available()
             if torch.cuda.is_available():
-                dependencies['cuda_devices'] = torch.cuda.device_count()
-                dependencies['cuda_memory'] = torch.cuda.get_device_properties(0).total_memory
+                dependencies["cuda_devices"] = torch.cuda.device_count()
+                dependencies["cuda_memory"] = torch.cuda.get_device_properties(
+                    0
+                ).total_memory
         except ImportError:
             torch = None
-            dependencies['cuda_available'] = False
+            dependencies["cuda_available"] = False
 
         missing_deps = [k for k, v in dependencies.items() if v == "missing"]
 
@@ -271,7 +294,7 @@ async def _check_dependencies() -> ComponentHealth:
             name="dependencies",
             status=status,
             response_time=response_time,
-            details=dependencies
+            details=dependencies,
         )
 
     except Exception as e:
@@ -279,7 +302,7 @@ async def _check_dependencies() -> ComponentHealth:
             name="dependencies",
             status="unhealthy",
             response_time=time.time() - start_time,
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -294,11 +317,15 @@ async def _get_system_metrics() -> SystemMetrics:
         memory_percent = memory.percent
 
         # 磁盘使用率
-        disk = psutil.disk_usage('/')
+        disk = psutil.disk_usage("/")
         disk_percent = disk.percent
 
         # 系统负载
-        load_average = list(psutil.getloadavg()) if hasattr(psutil, 'getloadavg') else [0.0, 0.0, 0.0]
+        load_average = (
+            list(psutil.getloadavg())
+            if hasattr(psutil, "getloadavg")
+            else [0.0, 0.0, 0.0]
+        )
 
         # 进程数量
         process_count = len(psutil.pids())
@@ -308,7 +335,7 @@ async def _get_system_metrics() -> SystemMetrics:
             memory_percent=memory_percent,
             disk_percent=disk_percent,
             load_average=load_average,
-            process_count=process_count
+            process_count=process_count,
         )
 
     except Exception as e:
@@ -318,7 +345,7 @@ async def _get_system_metrics() -> SystemMetrics:
             memory_percent=0.0,
             disk_percent=0.0,
             load_average=[0.0, 0.0, 0.0],
-            process_count=0
+            process_count=0,
         )
 
 
@@ -327,19 +354,19 @@ class HealthChecker:
 
     def __init__(self):
         self.start_time = time.time()
-        self.health_history: List[Dict[str, Any]] = []
+        self.health_history: list[dict[str, Any]] = []
         self.max_history = 100  # 保留最近100次检查记录
 
         # 性能阈值
         self.thresholds = {
-            'cpu_warning': 70.0,
-            'cpu_critical': 90.0,
-            'memory_warning': 80.0,
-            'memory_critical': 95.0,
-            'disk_warning': 85.0,
-            'disk_critical': 95.0,
-            'response_time_warning': 1.0,
-            'response_time_critical': 5.0
+            "cpu_warning": 70.0,
+            "cpu_critical": 90.0,
+            "memory_warning": 80.0,
+            "memory_critical": 95.0,
+            "disk_warning": 85.0,
+            "disk_critical": 95.0,
+            "response_time_warning": 1.0,
+            "response_time_critical": 5.0,
         }
 
     async def check_basic_health(self) -> HealthStatus:
@@ -351,17 +378,13 @@ class HealthChecker:
             status = "healthy"
 
             return HealthStatus(
-                status=status,
-                timestamp=datetime.now().isoformat(),
-                uptime=uptime
+                status=status, timestamp=datetime.now().isoformat(), uptime=uptime
             )
 
         except Exception as e:
             logger.error(f"基础健康检查失败: {e}")
             return HealthStatus(
-                status="unhealthy",
-                timestamp=datetime.now().isoformat(),
-                uptime=0.0
+                status="unhealthy", timestamp=datetime.now().isoformat(), uptime=0.0
             )
 
     async def check_detailed_health(self) -> DetailedHealthResponse:
@@ -379,15 +402,19 @@ class HealthChecker:
             performance_metrics = await self._get_performance_metrics()
 
             # 计算总体状态
-            overall_status = self._calculate_overall_status(components, own_system_metrics)
+            overall_status = self._calculate_overall_status(
+                components, own_system_metrics
+            )
 
             # 记录健康检查历史
             health_record = {
-                'timestamp': datetime.now().isoformat(),
-                'status': overall_status,
-                'check_duration': time.time() - start_time,
-                'component_count': len(components),
-                'healthy_components': len([c for c in components if c.status == 'healthy'])
+                "timestamp": datetime.now().isoformat(),
+                "status": overall_status,
+                "check_duration": time.time() - start_time,
+                "component_count": len(components),
+                "healthy_components": len(
+                    [c for c in components if c.status == "healthy"]
+                ),
             }
 
             self.health_history.append(health_record)
@@ -401,14 +428,14 @@ class HealthChecker:
                 version="1.0.0",
                 components=components,
                 system_metrics=own_system_metrics,
-                performance_metrics=performance_metrics
+                performance_metrics=performance_metrics,
             )
 
         except Exception as e:
             logger.error(f"详细健康检查失败: {e}")
             raise HTTPException(status_code=500, detail=f"健康检查失败: {str(e)}")
 
-    async def _check_all_components(self) -> List[ComponentHealth]:
+    async def _check_all_components(self) -> list[ComponentHealth]:
         """检查所有组件"""
         components = []
 
@@ -419,7 +446,7 @@ class HealthChecker:
             _check_document_service(),
             _check_search_service(),
             _check_storage(),
-            _check_dependencies()
+            _check_dependencies(),
         ]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -428,11 +455,11 @@ class HealthChecker:
             if isinstance(result, ComponentHealth):
                 components.append(result)
             elif isinstance(result, Exception):
-                components.append(ComponentHealth(
-                    name="unknown_component",
-                    status="unhealthy",
-                    error=str(result)
-                ))
+                components.append(
+                    ComponentHealth(
+                        name="unknown_component", status="unhealthy", error=str(result)
+                    )
+                )
 
         return components
 
@@ -452,7 +479,7 @@ class HealthChecker:
             # 验证嵌入向量
             if embedding is not None and len(embedding) == settings.EMBEDDING_DIMENSION:
                 status = "healthy"
-                if response_time > self.thresholds['response_time_warning']:
+                if response_time > self.thresholds["response_time_warning"]:
                     status = "degraded"
             else:
                 status = "unhealthy"
@@ -462,10 +489,10 @@ class HealthChecker:
                 status=status,
                 response_time=response_time,
                 details={
-                    'model_name': embedding_service.model_name,
-                    'dimension': len(embedding) if embedding is not None else 0,
-                    'device': getattr(embedding_service, 'device', 'unknown')
-                }
+                    "model_name": embedding_service.model_name,
+                    "dimension": len(embedding) if embedding is not None else 0,
+                    "device": getattr(embedding_service, "device", "unknown"),
+                },
             )
 
         except Exception as e:
@@ -473,37 +500,42 @@ class HealthChecker:
                 name="embedding_service",
                 status="unhealthy",
                 response_time=time.time() - start_time,
-                error=str(e)
+                error=str(e),
             )
 
-    async def _get_performance_metrics(self) -> Dict[str, Any]:
+    async def _get_performance_metrics(self) -> dict[str, Any]:
         """获取性能指标"""
         try:
             # 计算平均响应时间
             if self.health_history:
                 recent_checks = self.health_history[-10:]  # 最近10次检查
-                avg_check_duration = sum(h['check_duration'] for h in recent_checks) / len(recent_checks)
+                avg_check_duration = sum(
+                    h["check_duration"] for h in recent_checks
+                ) / len(recent_checks)
             else:
                 avg_check_duration = 0.0
 
             # 可用性计算（最近24小时）
             now = datetime.now()
             recent_history = [
-                h for h in self.health_history
-                if datetime.fromisoformat(h['timestamp']) > now - timedelta(hours=24)
+                h
+                for h in self.health_history
+                if datetime.fromisoformat(h["timestamp"]) > now - timedelta(hours=24)
             ]
 
             if recent_history:
-                healthy_count = len([h for h in recent_history if h['status'] == 'healthy'])
+                healthy_count = len(
+                    [h for h in recent_history if h["status"] == "healthy"]
+                )
                 availability = (healthy_count / len(recent_history)) * 100
             else:
                 availability = 100.0  # 假设新启动的系统是健康的
 
             return {
-                'avg_health_check_duration': round(avg_check_duration, 3),
-                'health_check_count': len(self.health_history),
-                'availability_24h': round(availability, 2),
-                'uptime_hours': round((time.time() - self.start_time) / 3600, 2)
+                "avg_health_check_duration": round(avg_check_duration, 3),
+                "health_check_count": len(self.health_history),
+                "availability_24h": round(availability, 2),
+                "uptime_hours": round((time.time() - self.start_time) / 3600, 2),
             }
 
         except Exception as e:
@@ -511,9 +543,7 @@ class HealthChecker:
             return {}
 
     def _calculate_overall_status(
-            self,
-            components: List[ComponentHealth],
-            system_metrics: SystemMetrics
+        self, components: list[ComponentHealth], system_metrics: SystemMetrics
     ) -> str:
         """计算总体状态"""
         # 检查组件状态
@@ -522,15 +552,15 @@ class HealthChecker:
 
         # 检查系统资源
         resource_critical = (
-                system_metrics.cpu_percent > self.thresholds['cpu_critical'] or
-                system_metrics.memory_percent > self.thresholds['memory_critical'] or
-                system_metrics.disk_percent > self.thresholds['disk_critical']
+            system_metrics.cpu_percent > self.thresholds["cpu_critical"]
+            or system_metrics.memory_percent > self.thresholds["memory_critical"]
+            or system_metrics.disk_percent > self.thresholds["disk_critical"]
         )
 
         resource_warning = (
-                system_metrics.cpu_percent > self.thresholds['cpu_warning'] or
-                system_metrics.memory_percent > self.thresholds['memory_warning'] or
-                system_metrics.disk_percent > self.thresholds['disk_warning']
+            system_metrics.cpu_percent > self.thresholds["cpu_warning"]
+            or system_metrics.memory_percent > self.thresholds["memory_warning"]
+            or system_metrics.disk_percent > self.thresholds["disk_warning"]
         )
 
         # 决定总体状态
@@ -541,13 +571,14 @@ class HealthChecker:
         else:
             return "healthy"
 
-    def get_health_history(self, hours: int = 24) -> List[Dict[str, Any]]:
+    def get_health_history(self, hours: int = 24) -> list[dict[str, Any]]:
         """获取健康检查历史"""
         cutoff_time = datetime.now() - timedelta(hours=hours)
 
         return [
-            h for h in self.health_history
-            if datetime.fromisoformat(h['timestamp']) > cutoff_time
+            h
+            for h in self.health_history
+            if datetime.fromisoformat(h["timestamp"]) > cutoff_time
         ]
 
 
@@ -573,14 +604,14 @@ async def component_health_check():
     components = await health_checker._check_all_components()
 
     return {
-        'timestamp': datetime.now().isoformat(),
-        'components': [component.dict() for component in components],
-        'summary': {
-            'total': len(components),
-            'healthy': len([c for c in components if c.status == 'healthy']),
-            'degraded': len([c for c in components if c.status == 'degraded']),
-            'unhealthy': len([c for c in components if c.status == 'unhealthy'])
-        }
+        "timestamp": datetime.now().isoformat(),
+        "components": [component.dict() for component in components],
+        "summary": {
+            "total": len(components),
+            "healthy": len([c for c in components if c.status == "healthy"]),
+            "degraded": len([c for c in components if c.status == "degraded"]),
+            "unhealthy": len([c for c in components if c.status == "unhealthy"]),
+        },
     }
 
 
@@ -591,9 +622,9 @@ async def system_metrics():
     performance = await health_checker._get_performance_metrics()
 
     return {
-        'timestamp': datetime.now().isoformat(),
-        'system': metrics.dict(),
-        'performance': performance
+        "timestamp": datetime.now().isoformat(),
+        "system": metrics.dict(),
+        "performance": performance,
     }
 
 
@@ -602,11 +633,7 @@ async def health_history(hours: int = 24):
     """健康检查历史"""
     history = health_checker.get_health_history(hours)
 
-    return {
-        'period_hours': hours,
-        'total_records': len(history),
-        'history': history
-    }
+    return {"period_hours": hours, "total_records": len(history), "history": history}
 
 
 @router.get("/readiness")
@@ -657,7 +684,7 @@ async def startup_check():
         return {
             "status": "started",
             "uptime": uptime,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except HTTPException:
@@ -669,12 +696,12 @@ async def startup_check():
 @router.get("/version")
 async def version_info():
     """版本信息"""
-    import sys
     import platform
+    import sys
 
     return {
         "version": "v1.0.0",
         "python_version": sys.version,
         "platform": platform.platform(),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }

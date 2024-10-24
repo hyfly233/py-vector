@@ -7,7 +7,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 import faiss
 import numpy as np
@@ -21,14 +21,14 @@ class Document:
     """文档元数据类"""
 
     def __init__(
-            self,
-            doc_id: str,
-            file_path: str,
-            file_name: str,
-            chunk_index: int,
-            text: str,
-            embedding: Optional[np.ndarray] = None,
-            metadata: Optional[Dict[str, Any]] = None
+        self,
+        doc_id: str,
+        file_path: str,
+        file_name: str,
+        chunk_index: int,
+        text: str,
+        embedding: np.ndarray | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         self.doc_id = doc_id
         self.file_path = file_path
@@ -39,30 +39,30 @@ class Document:
         self.metadata = metadata or {}
         self.created_at = datetime.now().isoformat()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典"""
         return {
-            'doc_id': self.doc_id,
-            'file_path': self.file_path,
-            'file_name': self.file_name,
-            'chunk_index': self.chunk_index,
-            'text': self.text,
-            'metadata': self.metadata,
-            'created_at': self.created_at
+            "doc_id": self.doc_id,
+            "file_path": self.file_path,
+            "file_name": self.file_name,
+            "chunk_index": self.chunk_index,
+            "text": self.text,
+            "metadata": self.metadata,
+            "created_at": self.created_at,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Document':
+    def from_dict(cls, data: dict[str, Any]) -> "Document":
         """从字典创建"""
         doc = cls(
-            doc_id=data['doc_id'],
-            file_path=data['file_path'],
-            file_name=data['file_name'],
-            chunk_index=data['chunk_index'],
-            text=data['text'],
-            metadata=data.get('metadata', {})
+            doc_id=data["doc_id"],
+            file_path=data["file_path"],
+            file_name=data["file_name"],
+            chunk_index=data["chunk_index"],
+            text=data["text"],
+            metadata=data.get("metadata", {}),
         )
-        doc.created_at = data.get('created_at', datetime.now().isoformat())
+        doc.created_at = data.get("created_at", datetime.now().isoformat())
         return doc
 
 
@@ -74,18 +74,18 @@ class SearchResult:
         self.score = score
         self.rank = rank
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典"""
         return {
-            'doc_id': self.document.doc_id,
-            'file_name': self.document.file_name,
-            'file_path': self.document.file_path,
-            'chunk_index': self.document.chunk_index,
-            'text': self.document.text,
-            'score': float(self.score),
-            'rank': self.rank,
-            'metadata': self.document.metadata,
-            'created_at': self.document.created_at
+            "doc_id": self.document.doc_id,
+            "file_name": self.document.file_name,
+            "file_path": self.document.file_path,
+            "chunk_index": self.document.chunk_index,
+            "text": self.document.text,
+            "score": float(self.score),
+            "rank": self.rank,
+            "metadata": self.document.metadata,
+            "created_at": self.document.created_at,
         }
 
 
@@ -93,10 +93,10 @@ class VectorStore:
     """FAISS 向量存储实现"""
 
     def __init__(
-            self,
-            dimension: int = None,
-            index_type: str = "IndexFlatIP",  # 内积索引，适合归一化向量
-            storage_path: str = None
+        self,
+        dimension: int = None,
+        index_type: str = "IndexFlatIP",  # 内积索引，适合归一化向量
+        storage_path: str = None,
     ):
         self.dimension = dimension or settings.EMBEDDING_DIMENSION
         self.index_type = index_type
@@ -106,10 +106,10 @@ class VectorStore:
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
         # 索引和元数据
-        self.index: Optional[faiss.Index] = None
-        self.documents: List[Document] = []
-        self.doc_id_to_idx: Dict[str, List[int]] = {}  # doc_id -> [indices]
-        self.idx_to_doc_idx: Dict[int, int] = {}  # faiss_index -> document_index
+        self.index: faiss.Index | None = None
+        self.documents: list[Document] = []
+        self.doc_id_to_idx: dict[str, list[int]] = {}  # doc_id -> [indices]
+        self.idx_to_doc_idx: dict[int, int] = {}  # faiss_index -> document_index
 
         # 文件路径
         self.index_file = self.storage_path / "faiss_index.bin"
@@ -122,11 +122,11 @@ class VectorStore:
 
         # 统计信息
         self._stats = {
-            'total_documents': 0,
-            'total_chunks': 0,
-            'index_size': 0,
-            'created_at': None,
-            'last_updated': None
+            "total_documents": 0,
+            "total_chunks": 0,
+            "index_size": 0,
+            "created_at": None,
+            "last_updated": None,
         }
 
     async def initialize(self) -> bool:
@@ -182,18 +182,20 @@ class VectorStore:
             return False
 
         try:
-            loop = asyncio.get_event_loop()
+            asyncio.get_event_loop()
 
             def _load() -> bool:  # 明确返回类型
                 # 加载 FAISS 索引
                 self.index = faiss.read_index(str(self.index_file))
 
                 # 加载元数据
-                with open(self.metadata_file, 'rb') as f:
+                with open(self.metadata_file, "rb") as f:
                     metadata = pickle.load(f)
 
                 # 恢复文档列表
-                self.documents = [Document.from_dict(doc_data) for doc_data in metadata['documents']]
+                self.documents = [
+                    Document.from_dict(doc_data) for doc_data in metadata["documents"]
+                ]
 
                 # 重建索引映射
                 self.doc_id_to_idx = {}
@@ -208,8 +210,13 @@ class VectorStore:
                     self.idx_to_doc_idx[faiss_idx] = doc_idx
 
                 # 验证维度
-                if hasattr(metadata, 'dimension') and metadata['dimension'] != self.dimension:
-                    logger.warning(f"索引维度不匹配: {metadata['dimension']} vs {self.dimension}")
+                if (
+                    hasattr(metadata, "dimension")
+                    and metadata["dimension"] != self.dimension
+                ):
+                    logger.warning(
+                        f"索引维度不匹配: {metadata['dimension']} vs {self.dimension}"
+                    )
 
                 return True
 
@@ -220,10 +227,7 @@ class VectorStore:
             return False
 
     async def add_documents(
-            self,
-            documents: List[Document],
-            embeddings: np.ndarray,
-            batch_size: int = 100
+        self, documents: list[Document], embeddings: np.ndarray, batch_size: int = 100
     ) -> bool:
         """
         批量添加文档
@@ -237,13 +241,17 @@ class VectorStore:
             是否成功
         """
         if len(documents) != len(embeddings):
-            raise ValueError(f"文档数量({len(documents)})与嵌入向量数量({len(embeddings)})不匹配")
+            raise ValueError(
+                f"文档数量({len(documents)})与嵌入向量数量({len(embeddings)})不匹配"
+            )
 
         try:
             with self._lock:
                 # 验证嵌入向量维度
                 if embeddings.shape[1] != self.dimension:
-                    raise ValueError(f"嵌入向量维度({embeddings.shape[1]})与索引维度({self.dimension})不匹配")
+                    raise ValueError(
+                        f"嵌入向量维度({embeddings.shape[1]})与索引维度({self.dimension})不匹配"
+                    )
 
                 # 归一化向量（如果使用内积索引）
                 if isinstance(self.index, faiss.IndexFlatIP):
@@ -252,8 +260,7 @@ class VectorStore:
                 # 批量添加到索引
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(
-                    self._executor,
-                    lambda: self.index.add(embeddings.astype('float32'))
+                    self._executor, lambda: self.index.add(embeddings.astype("float32"))
                 )
 
                 # 更新文档列表和映射
@@ -284,12 +291,12 @@ class VectorStore:
             return False
 
     async def search(
-            self,
-            query_embedding: np.ndarray,
-            top_k: int = 10,
-            filter_doc_ids: Optional[List[str]] = None,
-            min_score: float = 0.0
-    ) -> List[SearchResult]:
+        self,
+        query_embedding: np.ndarray,
+        top_k: int = 10,
+        filter_doc_ids: list[str] | None = None,
+        min_score: float = 0.0,
+    ) -> list[SearchResult]:
         """
         搜索相似文档
 
@@ -313,7 +320,9 @@ class VectorStore:
 
                 # 验证维度
                 if query_embedding.shape[1] != self.dimension:
-                    raise ValueError(f"查询向量维度({query_embedding.shape[1]})与索引维度({self.dimension})不匹配")
+                    raise ValueError(
+                        f"查询向量维度({query_embedding.shape[1]})与索引维度({self.dimension})不匹配"
+                    )
 
                 # 归一化查询向量
                 if isinstance(self.index, faiss.IndexFlatIP):
@@ -325,7 +334,9 @@ class VectorStore:
                 loop = asyncio.get_event_loop()
                 scores, indices = await loop.run_in_executor(
                     self._executor,
-                    lambda: self.index.search(query_embedding.astype('float32'), search_k)
+                    lambda: self.index.search(
+                        query_embedding.astype("float32"), search_k
+                    ),
                 )
 
                 # 处理搜索结果
@@ -382,8 +393,10 @@ class VectorStore:
                     if faiss_idx in self.idx_to_doc_idx:
                         doc_idx = self.idx_to_doc_idx[faiss_idx]
                         if doc_idx < len(self.documents):
-                            self.documents[doc_idx].metadata['deleted'] = True
-                            self.documents[doc_idx].metadata['deleted_at'] = datetime.now().isoformat()
+                            self.documents[doc_idx].metadata["deleted"] = True
+                            self.documents[doc_idx].metadata["deleted_at"] = (
+                                datetime.now().isoformat()
+                            )
 
                 logger.info(f"标记删除文档: {doc_id}")
                 await self._save_index()
@@ -406,7 +419,7 @@ class VectorStore:
                 active_embeddings = []
 
                 for doc in self.documents:
-                    if not doc.metadata.get('deleted', False):
+                    if not doc.metadata.get("deleted", False):
                         active_documents.append(doc)
                         if doc.embedding is not None:
                             active_embeddings.append(doc.embedding)
@@ -443,28 +456,39 @@ class VectorStore:
 
                 # 准备元数据
                 metadata = {
-                    'documents': [doc.to_dict() for doc in self.documents],
-                    'dimension': self.dimension,
-                    'index_type': self.index_type,
-                    'total_documents': len(
-                        set(doc.doc_id for doc in self.documents if not doc.metadata.get('deleted', False))),
-                    'total_chunks': len([doc for doc in self.documents if not doc.metadata.get('deleted', False)]),
-                    'saved_at': datetime.now().isoformat(),
-                    'version': '1.0'
+                    "documents": [doc.to_dict() for doc in self.documents],
+                    "dimension": self.dimension,
+                    "index_type": self.index_type,
+                    "total_documents": len(
+                        set(
+                            doc.doc_id
+                            for doc in self.documents
+                            if not doc.metadata.get("deleted", False)
+                        )
+                    ),
+                    "total_chunks": len(
+                        [
+                            doc
+                            for doc in self.documents
+                            if not doc.metadata.get("deleted", False)
+                        ]
+                    ),
+                    "saved_at": datetime.now().isoformat(),
+                    "version": "1.0",
                 }
 
                 # 保存元数据
-                with open(self.metadata_file, 'wb') as f:
+                with open(self.metadata_file, "wb") as f:
                     pickle.dump(metadata, f)
 
                 # 保存配置
                 config = {
-                    'dimension': self.dimension,
-                    'index_type': self.index_type,
-                    'storage_path': str(self.storage_path)
+                    "dimension": self.dimension,
+                    "index_type": self.index_type,
+                    "storage_path": str(self.storage_path),
                 }
 
-                with open(self.config_file, 'w', encoding='utf-8') as f:
+                with open(self.config_file, "w", encoding="utf-8") as f:
                     json.dump(config, f, indent=2, ensure_ascii=False)
 
             await loop.run_in_executor(self._executor, _save)
@@ -475,25 +499,29 @@ class VectorStore:
 
     async def _update_stats(self):
         """更新统计信息"""
-        active_docs = [doc for doc in self.documents if not doc.metadata.get('deleted', False)]
+        active_docs = [
+            doc for doc in self.documents if not doc.metadata.get("deleted", False)
+        ]
         unique_doc_ids = set(doc.doc_id for doc in active_docs)
 
-        self._stats.update({
-            'total_documents': len(unique_doc_ids),
-            'total_chunks': len(active_docs),
-            'index_size': self.index.ntotal if self.index else 0,
-            'last_updated': datetime.now().isoformat()
-        })
+        self._stats.update(
+            {
+                "total_documents": len(unique_doc_ids),
+                "total_chunks": len(active_docs),
+                "index_size": self.index.ntotal if self.index else 0,
+                "last_updated": datetime.now().isoformat(),
+            }
+        )
 
-        if self._stats['created_at'] is None:
-            self._stats['created_at'] = datetime.now().isoformat()
+        if self._stats["created_at"] is None:
+            self._stats["created_at"] = datetime.now().isoformat()
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """获取统计信息"""
         await self._update_stats()
         return self._stats.copy()
 
-    async def get_document(self, doc_id: str) -> Optional[List[Document]]:
+    async def get_document(self, doc_id: str) -> list[Document] | None:
         """获取文档的所有块"""
         if doc_id not in self.doc_id_to_idx:
             return None
@@ -504,30 +532,32 @@ class VectorStore:
                 doc_idx = self.idx_to_doc_idx[faiss_idx]
                 if doc_idx < len(self.documents):
                     doc = self.documents[doc_idx]
-                    if not doc.metadata.get('deleted', False):
+                    if not doc.metadata.get("deleted", False):
                         chunks.append(doc)
 
         return sorted(chunks, key=lambda x: x.chunk_index) if chunks else None
 
-    async def list_documents(self, include_deleted: bool = False) -> List[Dict[str, Any]]:
+    async def list_documents(
+        self, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
         """列出所有文档"""
         doc_map = {}
 
         for doc in self.documents:
-            if not include_deleted and doc.metadata.get('deleted', False):
+            if not include_deleted and doc.metadata.get("deleted", False):
                 continue
 
             if doc.doc_id not in doc_map:
                 doc_map[doc.doc_id] = {
-                    'doc_id': doc.doc_id,
-                    'file_name': doc.file_name,
-                    'file_path': doc.file_path,
-                    'chunk_count': 0,
-                    'created_at': doc.created_at,
-                    'metadata': doc.metadata
+                    "doc_id": doc.doc_id,
+                    "file_name": doc.file_name,
+                    "file_path": doc.file_path,
+                    "chunk_count": 0,
+                    "created_at": doc.created_at,
+                    "metadata": doc.metadata,
                 }
 
-            doc_map[doc.doc_id]['chunk_count'] += 1
+            doc_map[doc.doc_id]["chunk_count"] += 1
 
         return list(doc_map.values())
 
@@ -571,14 +601,14 @@ class VectorStore:
     def __del__(self):
         """析构函数"""
         try:
-            if hasattr(self, '_executor') and self._executor:
+            if hasattr(self, "_executor") and self._executor:
                 self._executor.shutdown(wait=False)
-        except:
+        except Exception:
             pass
 
 
 # 全局实例
-_vector_store: Optional[VectorStore] = None
+_vector_store: VectorStore | None = None
 
 
 async def get_vector_store() -> VectorStore:

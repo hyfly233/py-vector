@@ -1,48 +1,54 @@
 import time
-from typing import Optional, List, Dict, Any
+from typing import Any
 
-from fastapi import APIRouter, Query
-from fastapi import Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from py_vector.core.search_engine import SearchEngine
 from py_vector.dependencies import get_search_engine
 from py_vector.models.requests import SearchResponse
 from py_vector.services.document_service import get_document_service
-from py_vector.services.search_service import SearchOptions, SearchFilter, get_search_service
+from py_vector.services.search_service import (
+    SearchFilter,
+    SearchOptions,
+    get_search_service,
+)
 
 router = APIRouter()
 
 
 class SearchRequest(BaseModel):
     """搜索请求模型"""
+
     query: str
-    top_k: Optional[int] = 10
-    filter_doc_ids: Optional[List[str]] = None
-    min_score: Optional[float] = 0.1
+    top_k: int | None = 10
+    filter_doc_ids: list[str] | None = None
+    min_score: float | None = 0.1
 
 
 class AdvancedSearchRequest(BaseModel):
     query: str
-    search_type: Optional[str] = "vector"  # vector, hybrid, keyword
-    top_k: Optional[int] = 10
-    enable_rerank: Optional[bool] = False
-    enable_highlight: Optional[bool] = True
-    enable_summary: Optional[bool] = False
-    chunk_merge: Optional[bool] = True
-    diversity_threshold: Optional[float] = 0.7
+    search_type: str | None = "vector"  # vector, hybrid, keyword
+    top_k: int | None = 10
+    enable_rerank: bool | None = False
+    enable_highlight: bool | None = True
+    enable_summary: bool | None = False
+    chunk_merge: bool | None = True
+    diversity_threshold: float | None = 0.7
 
     # 过滤器
-    doc_ids: Optional[List[str]] = None
-    file_names: Optional[List[str]] = None
-    file_types: Optional[List[str]] = None
-    date_range: Optional[List[str]] = None  # [start_date, end_date]
-    min_score: Optional[float] = 0.1
-    metadata_filters: Optional[dict] = None
+    doc_ids: list[str] | None = None
+    file_names: list[str] | None = None
+    file_types: list[str] | None = None
+    date_range: list[str] | None = None  # [start_date, end_date]
+    min_score: float | None = 0.1
+    metadata_filters: dict | None = None
 
 
 @router.post(path="/", response_model=SearchResponse)
-async def search_documents(request: SearchRequest, search_engine: SearchEngine = Depends(get_search_engine)):
+async def search_documents(
+    request: SearchRequest, search_engine: SearchEngine = Depends(get_search_engine)
+):
     """搜索文档"""
     start_time = time.time()
 
@@ -54,7 +60,7 @@ async def search_documents(request: SearchRequest, search_engine: SearchEngine =
             query=request.query,
             results=results,
             total_results=len(results),
-            processing_time=processing_time
+            processing_time=processing_time,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"搜索失败: {str(e)}")
@@ -63,47 +69,45 @@ async def search_documents(request: SearchRequest, search_engine: SearchEngine =
 @router.get(
     path="/documents",
     summary="搜索文档（GET 方式）",
-    response_model=Dict[str, Any],
-    response_description="搜索文档结果"
+    response_model=dict[str, Any],
+    response_description="搜索文档结果",
 )
 async def search_documents_get(
-        q: str = Query(..., description="搜索查询"),
-        top_k: int = Query(10, ge=1, le=50, description="返回结果数量"),
-        min_score: float = Query(0.1, ge=0.0, le=1.0, description="最小得分过滤")
+    q: str = Query(..., description="搜索查询"),
+    top_k: int = Query(10, ge=1, le=50, description="返回结果数量"),
+    min_score: float = Query(0.1, ge=0.0, le=1.0, description="最小得分过滤"),
 ):
     """搜索文档（GET 方式）"""
     document_service = await get_document_service()
 
     return await document_service.search_documents(
-        query=q,
-        top_k=top_k,
-        min_score=min_score
+        query=q, top_k=top_k, min_score=min_score
     )
 
 
 @router.post(
     path="/documents",
     summary="搜索文档",
-    response_model=Dict[str, Any],
-    response_description="搜索文档结果"
+    response_model=dict[str, Any],
+    response_description="搜索文档结果",
 )
-async def search_documents(request: SearchRequest):
-    """搜索文档"""
+async def search_documents_by_content(request: SearchRequest):
+    """搜索文档（通过文档内容）"""
     document_service = await get_document_service()
 
     return await document_service.search_documents(
         query=request.query,
         top_k=request.top_k,
         filter_doc_ids=request.filter_doc_ids,
-        min_score=request.min_score
+        min_score=request.min_score,
     )
 
 
 @router.get(
     path="/stats",
     summary="获取搜索引擎统计信息",
-    response_model=Dict[str, Any],
-    response_description="搜索引擎统计信息"
+    response_model=dict[str, Any],
+    response_description="搜索引擎统计信息",
 )
 async def get_search_stats(search_engine: SearchEngine = Depends(get_search_engine)):
     """获取搜索引擎统计信息"""
@@ -117,10 +121,10 @@ async def get_search_stats(search_engine: SearchEngine = Depends(get_search_engi
 @router.post(
     path="/advanced",
     summary="高级搜索",
-    response_model=Dict[str, Any],
-    response_description="高级搜索结果"
+    response_model=dict[str, Any],
+    response_description="高级搜索结果",
 )
-async def advanced_search(request: AdvancedSearchRequest, user_id: Optional[str] = None):
+async def advanced_search(request: AdvancedSearchRequest, user_id: str | None = None):
     """高级搜索"""
     try:
         search_service = await get_search_service()
@@ -133,7 +137,7 @@ async def advanced_search(request: AdvancedSearchRequest, user_id: Optional[str]
             enable_highlight=request.enable_highlight,
             enable_summary=request.enable_summary,
             chunk_merge=request.chunk_merge,
-            diversity_threshold=request.diversity_threshold
+            diversity_threshold=request.diversity_threshold,
         )
 
         # 构建过滤器
@@ -143,15 +147,12 @@ async def advanced_search(request: AdvancedSearchRequest, user_id: Optional[str]
             file_types=request.file_types,
             date_range=tuple(request.date_range) if request.date_range else None,
             min_score=request.min_score,
-            metadata_filters=request.metadata_filters
+            metadata_filters=request.metadata_filters,
         )
 
         # 执行搜索
         result = await search_service.search(
-            query=request.query,
-            options=options,
-            filters=filters,
-            user_id=user_id
+            query=request.query, options=options, filters=filters, user_id=user_id
         )
 
         return result
@@ -164,15 +165,14 @@ async def advanced_search(request: AdvancedSearchRequest, user_id: Optional[str]
     path="/suggestions",
     summary="获取搜索建议",
 )
-async def get_search_suggestions(q: str = Query(..., description="部分查询"), limit: int = Query(5, ge=1, le=20)):
+async def get_search_suggestions(
+    q: str = Query(..., description="部分查询"), limit: int = Query(5, ge=1, le=20)
+):
     """获取搜索建议"""
     search_service = await get_search_service()
     suggestions = await search_service.get_search_suggestions(q, limit)
 
-    return {
-        'query': q,
-        'suggestions': suggestions
-    }
+    return {"query": q, "suggestions": suggestions}
 
 
 @router.get(
@@ -196,4 +196,4 @@ async def clear_search_cache():
     search_service = await get_search_service()
     await search_service.clear_cache()
 
-    return {'message': '搜索缓存已清理'}
+    return {"message": "搜索缓存已清理"}

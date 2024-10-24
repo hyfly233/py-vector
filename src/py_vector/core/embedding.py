@@ -2,7 +2,6 @@ import asyncio
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Optional
 
 import aiohttp
 import numpy as np
@@ -14,9 +13,15 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
-    def __init__(self, base_url: str = None, model_name: str = None, dimension: int = None, timeout: int = 30,
-                 max_retries: int = 3):
-        """ 初始化 embedding 服务"""
+    def __init__(
+        self,
+        base_url: str = None,
+        model_name: str = None,
+        dimension: int = None,
+        timeout: int = 30,
+        max_retries: int = 3,
+    ):
+        """初始化 embedding 服务"""
         self.base_url = base_url or settings.OLLAMA_BASE_URL
         self.model_name = model_name or settings.EMBEDDING_MODEL
         self.dimension = dimension or settings.EMBEDDING_DIMENSION
@@ -48,7 +53,9 @@ class EmbeddingService:
             # 测试 embedding 生成
             await self._test_embedding()
 
-            logger.info(f"✅ Embedding service initialized with model: {self.model_name}")
+            logger.info(
+                f"✅ Embedding service initialized with model: {self.model_name}"
+            )
             return True
 
         except Exception as e:
@@ -77,11 +84,14 @@ class EmbeddingService:
                 if response.status == 200:
                     # 获取模型列表
                     data = await response.json()
-                    models = data.get('models', [])
-                    model_names = [model['name'] for model in models]
+                    models = data.get("models", [])
+                    model_names = [model["name"] for model in models]
 
                     # 检查模型是否存在（支持 model:latest 格式）
-                    if self.model_name in model_names or f"{self.model_name}:latest" in model_names:
+                    if (
+                        self.model_name in model_names
+                        or f"{self.model_name}:latest" in model_names
+                    ):
                         logger.info(f"✅ Model {self.model_name} is available")
                     else:
                         available_models = ", ".join(model_names)
@@ -130,16 +140,15 @@ class EmbeddingService:
 
         for retry_num in range(self.max_retries):
             try:
-                payload = {
-                    "model": self.model_name,
-                    "prompt": text.strip()
-                }
+                payload = {"model": self.model_name, "prompt": text.strip()}
 
                 # 异步发送请求 embedding
-                async with self.session.post(self.embeddings_url, json=payload) as response:
+                async with self.session.post(
+                    self.embeddings_url, json=payload
+                ) as response:
                     if response.status == 200:
                         result = await response.json()
-                        embedding = np.array(result['embedding'], dtype=np.float32)
+                        embedding = np.array(result["embedding"], dtype=np.float32)
 
                         # 验证维度
                         if len(embedding) != self.dimension:
@@ -154,15 +163,19 @@ class EmbeddingService:
             except Exception as e:
                 logger.warning(f"❌ Embedding retry_num {retry_num + 1} failed: {e}")
                 if retry_num < self.max_retries - 1:
-                    wait_time = (2 ** retry_num) * 0.5  # 指数退避
+                    wait_time = (2**retry_num) * 0.5  # 指数退避
                     await asyncio.sleep(wait_time)
                 else:
-                    raise Exception(f"Failed to get embedding after {self.max_retries} attempts: {e}")
+                    raise Exception(
+                        "Failed to get embedding after"
+                        f" {self.max_retries} attempts: {e}"
+                    )
 
         return np.zeros(self.dimension, dtype=np.float32)
 
-    async def get_embeddings_batch(self, texts: List[str], batch_size: int = 10,
-                                   show_progress: bool = True) -> np.ndarray:
+    async def get_embeddings_batch(
+        self, texts: list[str], batch_size: int = 10, show_progress: bool = True
+    ) -> np.ndarray:
         """
         批量获取文本的 embedding
 
@@ -186,11 +199,13 @@ class EmbeddingService:
         total_batches = (len(valid_texts) + batch_size - 1) // batch_size
 
         for i in range(0, len(valid_texts), batch_size):
-            batch = valid_texts[i:i + batch_size]
+            batch = valid_texts[i : i + batch_size]
             batch_num = i // batch_size + 1
 
             if show_progress:
-                logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} texts)")
+                logger.info(
+                    f"Processing batch {batch_num}/{total_batches} ({len(batch)} texts)"
+                )
 
             try:
                 # 并发处理批次中的文本
@@ -209,7 +224,7 @@ class EmbeddingService:
 
         return np.array(embeddings)
 
-    async def _process_batch_concurrent(self, texts: List[str]) -> List[np.ndarray]:
+    async def _process_batch_concurrent(self, texts: list[str]) -> list[np.ndarray]:
         """并发处理批次中的文本"""
         tasks = [self.get_embedding(text) for text in texts]
 
@@ -231,7 +246,7 @@ class EmbeddingService:
             # 回退到顺序处理
             return await self._process_batch_sequential(texts)
 
-    async def _process_batch_sequential(self, texts: List[str]) -> List[np.ndarray]:
+    async def _process_batch_sequential(self, texts: list[str]) -> list[np.ndarray]:
         """顺序处理批次中的文本（回退方案）"""
         embeddings = []
         for text in texts:
@@ -250,7 +265,7 @@ class EmbeddingService:
 
         if current_dim > self.dimension:
             # 截断
-            return embedding[:self.dimension]
+            return embedding[: self.dimension]
         elif current_dim < self.dimension:
             # 填充零值
             padded = np.zeros(self.dimension, dtype=np.float32)
@@ -274,20 +289,15 @@ class EmbeddingService:
 
         for attempt in range(self.max_retries):
             try:
-                payload = {
-                    "model": self.model_name,
-                    "prompt": text.strip()
-                }
+                payload = {"model": self.model_name, "prompt": text.strip()}
 
                 response = requests.post(
-                    self.embeddings_url,
-                    json=payload,
-                    timeout=self.timeout
+                    self.embeddings_url, json=payload, timeout=self.timeout
                 )
 
                 if response.status_code == 200:
                     result = response.json()
-                    embedding = np.array(result['embedding'], dtype=np.float32)
+                    embedding = np.array(result["embedding"], dtype=np.float32)
 
                     if len(embedding) != self.dimension:
                         embedding = self._adjust_dimension(embedding)
@@ -299,7 +309,7 @@ class EmbeddingService:
             except Exception as e:
                 logger.warning(f"Sync embedding attempt {attempt + 1} failed: {e}")
                 if attempt < self.max_retries - 1:
-                    time.sleep((2 ** attempt) * 0.5)
+                    time.sleep((2**attempt) * 0.5)
                 else:
                     raise
 
@@ -314,14 +324,16 @@ class EmbeddingService:
                         "base_url": self.base_url,
                         "model": self.model_name,
                         "dimension": self.dimension,
-                        "available_models": [model['name'] for model in data.get('models', [])]
+                        "available_models": [
+                            model["name"] for model in data.get("models", [])
+                        ],
                     }
         except Exception as e:
             return {
                 "status": "unhealthy",
                 "error": str(e),
                 "base_url": self.base_url,
-                "model": self.model_name
+                "model": self.model_name,
             }
 
     async def cleanup(self):
@@ -337,7 +349,7 @@ class EmbeddingService:
 
 
 # 全局实例（可选）
-_embedding_service: Optional[EmbeddingService] = None
+_embedding_service: EmbeddingService | None = None
 
 
 async def get_embedding_service() -> EmbeddingService:

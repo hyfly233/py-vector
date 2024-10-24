@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from py_vector.api.v1.endpoints import documents, search, health
+from py_vector.api.v1.endpoints import documents, health, search
 
 api_router = APIRouter()
 

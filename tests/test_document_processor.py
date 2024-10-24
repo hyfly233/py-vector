@@ -1,7 +1,7 @@
 import asyncio
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import aiofiles
 import pytest
@@ -27,16 +27,16 @@ class TestDocumentProcessor:
     def sample_texts(self):
         """示例文本内容"""
         return {
-            'simple': "这是一个简单的测试文档。",
-            'long': "这是一个很长的文档。" + "测试内容。" * 100,
-            'multi_paragraph': """第一段内容。
+            "simple": "这是一个简单的测试文档。",
+            "long": "这是一个很长的文档。" + "测试内容。" * 100,
+            "multi_paragraph": """第一段内容。
 
 第二段内容，包含更多信息。
 
 第三段内容。""",
-            'unicode': "这是包含中文、English和éñglish的文档。",
-            'empty': "",
-            'whitespace': "   \n\t   \n   "
+            "unicode": "这是包含中文、English和éñglish的文档。",
+            "empty": "",
+            "whitespace": "   \n\t   \n   ",
         }
 
     # ========== 基础功能测试 ==========
@@ -47,26 +47,26 @@ class TestDocumentProcessor:
 
         assert isinstance(supported_types, list)
         assert len(supported_types) > 0
-        assert '.txt' in supported_types
-        assert '.pdf' in supported_types
-        assert '.docx' in supported_types
+        assert ".txt" in supported_types
+        assert ".pdf" in supported_types
+        assert ".docx" in supported_types
 
     def test_is_supported_file(self, processor):
         """测试文件类型支持检查"""
         # 支持的文件类型
-        assert processor.is_supported_file("test.txt") == True
-        assert processor.is_supported_file("document.pdf") == True
-        assert processor.is_supported_file("report.docx") == True
-        assert processor.is_supported_file("data.csv") == True
+        assert processor.is_supported_file("test.txt")
+        assert processor.is_supported_file("document.pdf")
+        assert processor.is_supported_file("report.docx")
+        assert processor.is_supported_file("data.csv")
 
         # 不支持的文件类型
-        assert processor.is_supported_file("image.jpg") == False
-        assert processor.is_supported_file("video.mp4") == False
-        assert processor.is_supported_file("archive.zip") == False
+        assert not processor.is_supported_file("image.jpg")
+        assert not processor.is_supported_file("video.mp4")
+        assert not processor.is_supported_file("archive.zip")
 
         # 边界情况
-        assert processor.is_supported_file("") == False
-        assert processor.is_supported_file("noextension") == False
+        assert not processor.is_supported_file("")
+        assert not processor.is_supported_file("noextension")
         # assert processor.is_supported_file(".txt") == True
 
     # def test_split_text_by_sentences(self, processor, sample_texts):
@@ -108,7 +108,7 @@ class TestDocumentProcessor:
     #     assert len(chunks) == 0
     #
     #     # 自定义参数测试
-    #     small_chunks = processor._chunk_text(sample_texts['long'], chunk_size=100, overlap=20)
+    #     small_chunks = processor._chunk_text(sample_texts['long'], chunk_size=100,
     #     assert len(small_chunks) > len(chunks)  # 更小的块应该产生更多分片
 
     # ========== 文件创建和保存测试 ==========
@@ -116,7 +116,7 @@ class TestDocumentProcessor:
     @pytest.mark.asyncio
     async def test_save_temp_file(self, processor, temp_dir):
         """测试保存临时文件"""
-        content = f"测试文件内容"
+        content = "测试文件内容"
         filename = "test.txt"
 
         # 临时修改处理器的临时目录
@@ -131,7 +131,7 @@ class TestDocumentProcessor:
             assert file_path.parent == temp_dir
 
             # 验证文件内容
-            async with aiofiles.open(file_path, 'rb') as f:
+            async with aiofiles.open(file_path, "rb") as f:
                 saved_content = await f.read()
                 assert saved_content == content
 
@@ -141,7 +141,7 @@ class TestDocumentProcessor:
     @pytest.mark.asyncio
     async def test_save_temp_file_with_special_chars(self, processor, temp_dir):
         """测试保存包含特殊字符的文件名"""
-        content = f"content"
+        content = "content"
         filename = "测试文件 (1) [copy].txt"
 
         processor.temp_dir = temp_dir
@@ -154,26 +154,28 @@ class TestDocumentProcessor:
 
     # ========== TXT 文件处理测试 ==========
 
-    def create_temp_txt_file(self, temp_dir: Path, content: str, filename: str = "test.txt") -> Path:
+    def create_temp_txt_file(
+        self, temp_dir: Path, content: str, filename: str = "test.txt"
+    ) -> Path:
         """创建临时TXT文件"""
         file_path = temp_dir / filename
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
         return file_path
 
     @pytest.mark.asyncio
     async def test_process_txt_file(self, processor, temp_dir, sample_texts):
         """测试TXT文件处理"""
-        file_path = self.create_temp_txt_file(temp_dir, sample_texts['multi_paragraph'])
+        file_path = self.create_temp_txt_file(temp_dir, sample_texts["multi_paragraph"])
 
         result = await processor._process_txt_file(file_path)
 
-        assert result['status'] == 'success'
-        assert len(result['chunks']) >= 3
-        assert result['file_name'] == file_path.name
-        assert result['file_size'] > 0
-        assert 'processing_time' in result
-        assert 'document_hash' in result
+        assert result["status"] == "success"
+        assert len(result["chunks"]) >= 3
+        assert result["file_name"] == file_path.name
+        assert result["file_size"] > 0
+        assert "processing_time" in result
+        assert "document_hash" in result
 
     @pytest.mark.asyncio
     async def test_process_empty_txt_file(self, processor, temp_dir):
@@ -182,8 +184,8 @@ class TestDocumentProcessor:
 
         result = await processor._process_txt_file(file_path)
 
-        assert result['status'] == 'success'
-        assert len(result['chunks']) == 0
+        assert result["status"] == "success"
+        assert len(result["chunks"]) == 0
 
     @pytest.mark.asyncio
     async def test_process_txt_file_with_encoding_issues(self, processor, temp_dir):
@@ -191,14 +193,14 @@ class TestDocumentProcessor:
         file_path = temp_dir / "test.txt"
 
         # 创建有编码问题的文件
-        with open(file_path, 'wb') as f:
-            f.write("测试".encode('gbk'))  # 使用GBK编码
+        with open(file_path, "wb") as f:
+            f.write("测试".encode("gbk"))  # 使用GBK编码
 
         result = await processor._process_txt_file(file_path)
 
         # 应该能够处理编码问题
-        assert result['status'] == 'success'
-        assert len(result['chunks']) > 0
+        assert result["status"] == "success"
+        assert len(result["chunks"]) > 0
 
     # ========== PDF 文件处理测试 ==========
 
@@ -210,7 +212,7 @@ class TestDocumentProcessor:
         file_path.write_bytes(b"%PDF-1.4 fake pdf content")
 
         # Mock PyPDF2
-        with patch('py_vector.core.document_processor.PdfReader') as mock_reader:
+        with patch("py_vector.core.document_processor.PdfReader") as mock_reader:
             mock_page = MagicMock()
             mock_page.extract_text.return_value = "这是PDF文档的内容。"
 
@@ -220,9 +222,9 @@ class TestDocumentProcessor:
 
             result = await processor._process_pdf_file(file_path)
 
-            assert result['status'] == 'success'
-            assert len(result['chunks']) > 0
-            assert "PDF文档的内容" in result['chunks'][0]
+            assert result["status"] == "success"
+            assert len(result["chunks"]) > 0
+            assert "PDF文档的内容" in result["chunks"][0]
 
     @pytest.mark.asyncio
     async def test_process_corrupted_pdf_file(self, processor, temp_dir):
@@ -233,8 +235,8 @@ class TestDocumentProcessor:
 
         result = await processor._process_pdf_file(file_path)
 
-        assert result['status'] == 'error'
-        assert 'error' in result
+        assert result["status"] == "error"
+        assert "error" in result
 
     # ========== DOCX 文件处理测试 ==========
 
@@ -245,7 +247,7 @@ class TestDocumentProcessor:
         file_path.write_bytes(b"fake docx content")
 
         # Mock python-docx
-        with patch('py_vector.core.document_processor.Document') as mock_document:
+        with patch("py_vector.core.document_processor.Document") as mock_document:
             mock_paragraph = MagicMock()
             mock_paragraph.text = "这是Word文档的段落。"
 
@@ -255,17 +257,20 @@ class TestDocumentProcessor:
 
             result = await processor._process_docx_file(file_path)
 
-            assert result['status'] == 'success'
-            assert len(result['chunks']) > 0
-            assert "Word文档的段落" in result['chunks'][0]
+            assert result["status"] == "success"
+            assert len(result["chunks"]) > 0
+            assert "Word文档的段落" in result["chunks"][0]
 
     # ========== CSV 文件处理测试 ==========
 
-    def create_temp_csv_file(self, temp_dir: Path, data: list, filename: str = "test.csv") -> Path:
+    def create_temp_csv_file(
+        self, temp_dir: Path, data: list, filename: str = "test.csv"
+    ) -> Path:
         """创建临时CSV文件"""
         file_path = temp_dir / filename
-        with open(file_path, 'w', encoding='utf-8', newline='') as f:
+        with open(file_path, "w", encoding="utf-8", newline="") as f:
             import csv
+
             writer = csv.writer(f)
             for row in data:
                 writer.writerow(row)
@@ -275,23 +280,23 @@ class TestDocumentProcessor:
     async def test_process_csv_file(self, processor, temp_dir):
         """测试CSV文件处理"""
         csv_data = [
-            ['姓名', '年龄', '城市'],
-            ['张三', '25', '北京'],
-            ['李四', '30', '上海'],
-            ['王五', '28', '广州']
+            ["姓名", "年龄", "城市"],
+            ["张三", "25", "北京"],
+            ["李四", "30", "上海"],
+            ["王五", "28", "广州"],
         ]
 
         file_path = self.create_temp_csv_file(temp_dir, csv_data)
 
         result = await processor._process_csv_file(file_path)
 
-        assert result['status'] == 'success'
-        assert len(result['chunks']) > 0
+        assert result["status"] == "success"
+        assert len(result["chunks"]) > 0
 
         # 验证CSV内容被正确解析
-        content = " ".join(result['chunks'])
-        assert '张三' in content
-        assert '北京' in content
+        content = " ".join(result["chunks"])
+        assert "张三" in content
+        assert "北京" in content
 
     @pytest.mark.asyncio
     async def test_process_empty_csv_file(self, processor, temp_dir):
@@ -300,24 +305,24 @@ class TestDocumentProcessor:
 
         result = await processor._process_csv_file(file_path)
 
-        assert result['status'] == 'success'
-        assert len(result['chunks']) == 0
+        assert result["status"] == "success"
+        assert len(result["chunks"]) == 0
 
     # ========== 主处理方法测试 ==========
 
     @pytest.mark.asyncio
     async def test_process_document_txt(self, processor, temp_dir, sample_texts):
         """测试主文档处理方法 - TXT文件"""
-        file_path = self.create_temp_txt_file(temp_dir, sample_texts['multi_paragraph'])
+        file_path = self.create_temp_txt_file(temp_dir, sample_texts["multi_paragraph"])
 
         result = await processor.process_document(file_path)
 
-        assert result['status'] == 'success'
-        assert len(result['chunks']) > 0
-        assert result['file_name'] == file_path.name
-        assert result['file_size'] > 0
-        assert result['processing_time'] > 0
-        assert len(result['document_hash']) == 64  # SHA256 hash length
+        assert result["status"] == "success"
+        assert len(result["chunks"]) > 0
+        assert result["file_name"] == file_path.name
+        assert result["file_size"] > 0
+        assert result["processing_time"] > 0
+        assert len(result["document_hash"]) == 64  # SHA256 hash length
 
     @pytest.mark.asyncio
     async def test_process_document_unsupported_format(self, processor, temp_dir):
@@ -327,8 +332,8 @@ class TestDocumentProcessor:
 
         result = await processor.process_document(file_path)
 
-        assert result['status'] == 'error'
-        assert 'unsupported' in result['error'].lower()
+        assert result["status"] == "error"
+        assert "unsupported" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_process_document_nonexistent_file(self, processor, temp_dir):
@@ -337,8 +342,11 @@ class TestDocumentProcessor:
 
         result = await processor.process_document(file_path)
 
-        assert result['status'] == 'error'
-        assert 'not found' in result['error'].lower() or 'does not exist' in result['error'].lower()
+        assert result["status"] == "error"
+        assert (
+            "not found" in result["error"].lower()
+            or "does not exist" in result["error"].lower()
+        )
 
     # ========== 错误处理测试 ==========
 
@@ -349,11 +357,11 @@ class TestDocumentProcessor:
         file_path.write_text("content")
 
         # 模拟权限错误
-        with patch('aiofiles.open', side_effect=PermissionError("Permission denied")):
+        with patch("aiofiles.open", side_effect=PermissionError("Permission denied")):
             result = await processor.process_document(file_path)
 
-            assert result['status'] == 'error'
-            assert 'permission' in result['error'].lower()
+            assert result["status"] == "error"
+            assert "permission" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_process_large_file_timeout(self, processor, temp_dir):
@@ -369,7 +377,7 @@ class TestDocumentProcessor:
         try:
             result = await processor.process_document(file_path)
             # 取决于系统性能，可能成功也可能超时
-            assert result['status'] in ['success', 'error']
+            assert result["status"] in ["success", "error"]
         finally:
             processor.processing_timeout = original_timeout
 
@@ -378,9 +386,10 @@ class TestDocumentProcessor:
     @pytest.mark.asyncio
     async def test_processing_performance(self, processor, temp_dir, sample_texts):
         """测试处理性能"""
-        file_path = self.create_temp_txt_file(temp_dir, sample_texts['long'])
+        file_path = self.create_temp_txt_file(temp_dir, sample_texts["long"])
 
         import time
+
         start_time = time.time()
 
         result = await processor.process_document(file_path)
@@ -388,9 +397,9 @@ class TestDocumentProcessor:
         end_time = time.time()
         processing_time = end_time - start_time
 
-        assert result['status'] == 'success'
+        assert result["status"] == "success"
         assert processing_time < 10.0  # 应该在10秒内完成
-        assert result['processing_time'] > 0
+        assert result["processing_time"] > 0
 
     # ========== 并发测试 ==========
 
@@ -401,9 +410,7 @@ class TestDocumentProcessor:
         files = []
         for i in range(5):
             file_path = self.create_temp_txt_file(
-                temp_dir,
-                sample_texts['multi_paragraph'],
-                f"test_{i}.txt"
+                temp_dir, sample_texts["multi_paragraph"], f"test_{i}.txt"
             )
             files.append(file_path)
 
@@ -413,8 +420,8 @@ class TestDocumentProcessor:
 
         # 验证所有处理都成功
         for result in results:
-            assert result['status'] == 'success'
-            assert len(result['chunks']) > 0
+            assert result["status"] == "success"
+            assert len(result["chunks"]) > 0
 
     # ========== 清理测试 ==========
 
@@ -443,38 +450,49 @@ class TestDocumentProcessor:
     async def test_full_workflow(self, temp_dir, sample_texts):
         """测试完整工作流程"""
         # 使用全局实例
-        file_path = self.create_temp_txt_file(temp_dir, sample_texts['multi_paragraph'])
+        file_path = self.create_temp_txt_file(temp_dir, sample_texts["multi_paragraph"])
 
         # 处理文档
         result = await document_processor.process_document(file_path)
 
-        assert result['status'] == 'success'
-        assert len(result['chunks']) > 0
+        assert result["status"] == "success"
+        assert len(result["chunks"]) > 0
 
         # 验证返回的数据结构
-        required_keys = ['status', 'chunks', 'file_name', 'file_size', 'processing_time', 'document_hash']
+        required_keys = [
+            "status",
+            "chunks",
+            "file_name",
+            "file_size",
+            "processing_time",
+            "document_hash",
+        ]
         for key in required_keys:
             assert key in result
 
         # 验证chunks的结构
-        for chunk in result['chunks']:
+        for chunk in result["chunks"]:
             assert isinstance(chunk, str)
             assert len(chunk) > 0
 
 
 # ========== 参数化测试 ==========
 
-@pytest.mark.parametrize("file_extension,expected_support", [
-    ("txt", True),
-    ("pdf", True),
-    ("docx", True),
-    ("csv", True),
-    ("json", True),
-    ("md", True),
-    ("jpg", False),
-    ("mp4", False),
-    ("exe", False),
-])
+
+@pytest.mark.parametrize(
+    "file_extension,expected_support",
+    [
+        ("txt", True),
+        ("pdf", True),
+        ("docx", True),
+        ("csv", True),
+        ("json", True),
+        ("md", True),
+        ("jpg", False),
+        ("mp4", False),
+        ("exe", False),
+    ],
+)
 def test_file_support_parametrized(file_extension, expected_support):
     """参数化测试文件支持"""
     processor = DocumentProcessor()
@@ -483,11 +501,14 @@ def test_file_support_parametrized(file_extension, expected_support):
     assert processor.is_supported_file(filename) == expected_support
 
 
-@pytest.mark.parametrize("chunk_size,overlap,text_length", [
-    (100, 20, 50),  # 短文本
-    (100, 20, 150),  # 中等文本
-    (100, 20, 500),  # 长文本
-])
+@pytest.mark.parametrize(
+    "chunk_size,overlap,text_length",
+    [
+        (100, 20, 50),  # 短文本
+        (100, 20, 150),  # 中等文本
+        (100, 20, 500),  # 长文本
+    ],
+)
 def test_chunking_parametrized(chunk_size, overlap, text_length):
     """参数化测试文本分块"""
     processor = DocumentProcessor()
@@ -507,10 +528,12 @@ def test_chunking_parametrized(chunk_size, overlap, text_length):
 
 # ========== Fixture 清理 ==========
 
+
 @pytest.fixture(autouse=True)
 def cleanup_after_test():
     """每个测试后的清理"""
     yield
     # 测试后清理逻辑
     import gc
+
     gc.collect()

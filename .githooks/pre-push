@@ -1,0 +1,13 @@
+#!/bin/sh
+# ruff pre-push hook — lint & format check
+# abort push if either check fails
+
+set -e
+
+echo "🔍 Running ruff lint check..."
+uv run ruff check .
+
+echo "🎨 Running ruff format check..."
+uv run ruff format --check .
+
+echo "✅ All checks passed"

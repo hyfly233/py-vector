@@ -15,3 +15,5 @@ wheels/
 .env
 
 **/storage/**
+
+node_modules

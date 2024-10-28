@@ -159,6 +159,24 @@ bash scripts/start.sh
 | `CHUNK_OVERLAP` | `50` | 切片重叠量（字符） |
 | `MAX_FILE_SIZE` | `50MB` | 上传文件大小限制 |
 | `MAX_SEARCH_RESULTS` | `20` | 搜索返回上限 |
+| **LLM 配置** | | |
+| `LLM_BASE_URL` | `http://localhost:11434/v1` | LLM 服务地址（OpenAI 兼容） |
+| `LLM_MODEL` | `qwen2.5` | 生成模型名 |
+| `LLM_API_KEY` | `ollama` | API 密钥 |
+| `LLM_TEMPERATURE` | `0.7` | 生成温度 |
+| `LLM_MAX_TOKENS` | `2048` | 最大生成长度 |
+| `LLM_CONTEXT_LENGTH` | `8192` | 上下文窗口大小 |
+| **Reranker 配置** | | |
+| `RERANKER_BASE_URL` | `""` | Reranker 服务地址（空则使用 Embedding 服务） |
+| `RERANKER_MODEL` | `bge-reranker-v2-m3` | Reranker 模型名 |
+| `RERANKER_API_KEY` | `ollama` | API 密钥 |
+| `RERANKER_ENABLED` | `False` | 是否启用模型重排序 |
+| `RERANKER_TOP_K` | `10` | 重排序返回数量 |
+| **多模态配置（预留）** | | |
+| `MULTIMODAL_ENABLED` | `False` | 是否启用多模态 |
+| `MULTIMODAL_BASE_URL` | `""` | 多模态服务地址 |
+| `MULTIMODAL_MODEL` | `""` | 多模态模型名 |
+| `MULTIMODAL_EMBEDDING_MODEL` | `""` | 多模态嵌入模型名 |
 
 ## 设计决策
 

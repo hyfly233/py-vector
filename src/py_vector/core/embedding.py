@@ -1,11 +1,9 @@
 import asyncio
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor
 
-import aiohttp
 import numpy as np
-import requests
+from openai import APIError, AsyncOpenAI, OpenAI
 
 from py_vector.config import settings
 
@@ -13,44 +11,41 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
+    """Embedding 服务——通过 OpenAI 兼容 API 生成文本嵌入向量"""
+
     def __init__(
         self,
         base_url: str = None,
         model_name: str = None,
         dimension: int = None,
+        api_key: str = None,
         timeout: int = 30,
         max_retries: int = 3,
     ):
         """初始化 embedding 服务"""
-        self.base_url = base_url or settings.OLLAMA_BASE_URL
+        self.base_url = base_url or settings.EMBEDDING_BASE_URL
         self.model_name = model_name or settings.EMBEDDING_MODEL
         self.dimension = dimension or settings.EMBEDDING_DIMENSION
+        self.api_key = api_key or settings.EMBEDDING_API_KEY
         self.timeout = timeout
         self.max_retries = max_retries
 
-        # 构建 API URL
-        self.embeddings_url = f"{self.base_url}/api/embeddings"
-        self.tags_url = f"{self.base_url}/api/tags"
-
-        # 连接池配置
-        self.session = None
-        self._executor = ThreadPoolExecutor(max_workers=4)
+        # OpenAI 客户端（延迟初始化）
+        self.client: AsyncOpenAI | None = None
+        self._sync_client: OpenAI | None = None
 
     async def initialize(self):
         """初始化 embedding 服务"""
         try:
-            # 创建 aiohttp 会话
-            self.session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=self.timeout)
+            # 创建异步 OpenAI 客户端
+            self.client = AsyncOpenAI(
+                base_url=self.base_url,
+                api_key=self.api_key,
+                timeout=self.timeout,
+                max_retries=max(0, self.max_retries - 1),
             )
 
-            # 检查 Ollama 连接
-            await self._check_ollama_connection()
-
-            # 验证模型可用性
-            await self._verify_model()
-
-            # 测试 embedding 生成
+            # 测试 embedding 生成（验证连接和模型可用性）
             await self._test_embedding()
 
             logger.info(
@@ -60,49 +55,10 @@ class EmbeddingService:
 
         except Exception as e:
             logger.error(f"❌ Failed to initialize embedding service: {e}")
-            if self.session:
-                await self.session.close()
-                self.session = None
+            if self.client:
+                await self.client.close()
+                self.client = None
             raise
-
-    async def _check_ollama_connection(self):
-        """测试与 Ollama 的连接"""
-        try:
-            # 获取 tags 列表以验证连接
-            async with self.session.get(self.tags_url) as response:
-                if response.status == 200:
-                    logger.info("✅ Ollama connection successful")
-                else:
-                    raise Exception(f"Ollama returned status {response.status}")
-        except Exception as e:
-            raise Exception(f"Cannot connect to Ollama at {self.base_url}: {e}")
-
-    async def _verify_model(self):
-        """验证模型是否可用"""
-        try:
-            async with self.session.get(self.tags_url) as response:
-                if response.status == 200:
-                    # 获取模型列表
-                    data = await response.json()
-                    models = data.get("models", [])
-                    model_names = [model["name"] for model in models]
-
-                    # 检查模型是否存在（支持 model:latest 格式）
-                    if (
-                        self.model_name in model_names
-                        or f"{self.model_name}:latest" in model_names
-                    ):
-                        logger.info(f"✅ Model {self.model_name} is available")
-                    else:
-                        available_models = ", ".join(model_names)
-                        raise Exception(
-                            f"Model {self.model_name} not found. "
-                            f"Available models: {available_models}"
-                        )
-                else:
-                    raise Exception("Cannot retrieve model list")
-        except Exception as e:
-            raise Exception(f"Model verification failed: {e}")
 
     async def _test_embedding(self):
         """测试 embedding 生成"""
@@ -132,7 +88,7 @@ class EmbeddingService:
         Returns:
             embedding 向量
         """
-        if not self.session:
+        if not self.client:
             raise Exception("Embedding service not initialized")
 
         if not text or not text.strip():
@@ -140,28 +96,21 @@ class EmbeddingService:
 
         for retry_num in range(self.max_retries):
             try:
-                payload = {"model": self.model_name, "prompt": text.strip()}
+                response = await self.client.embeddings.create(
+                    model=self.model_name,
+                    input=text.strip(),
+                )
 
-                # 异步发送请求 embedding
-                async with self.session.post(
-                    self.embeddings_url, json=payload
-                ) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        embedding = np.array(result["embedding"], dtype=np.float32)
+                embedding = np.array(response.data[0].embedding, dtype=np.float32)
 
-                        # 验证维度
-                        if len(embedding) != self.dimension:
-                            # 调整维度
-                            embedding = self._adjust_dimension(embedding)
+                # 验证维度
+                if len(embedding) != self.dimension:
+                    embedding = self._adjust_dimension(embedding)
 
-                        return embedding
-                    else:
-                        error_text = await response.text()
-                        raise Exception(f"HTTP {response.status}: {error_text}")
+                return embedding
 
-            except Exception as e:
-                logger.warning(f"❌ Embedding retry_num {retry_num + 1} failed: {e}")
+            except APIError as e:
+                logger.warning(f"❌ Embedding retry {retry_num + 1} failed: {e}")
                 if retry_num < self.max_retries - 1:
                     wait_time = (2**retry_num) * 0.5  # 指数退避
                     await asyncio.sleep(wait_time)
@@ -170,6 +119,13 @@ class EmbeddingService:
                         "Failed to get embedding after"
                         f" {self.max_retries} attempts: {e}"
                     )
+            except Exception as e:
+                logger.warning(f"❌ Embedding retry {retry_num + 1} failed: {e}")
+                if retry_num < self.max_retries - 1:
+                    wait_time = (2**retry_num) * 0.5
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
 
         return np.zeros(self.dimension, dtype=np.float32)
 
@@ -181,7 +137,7 @@ class EmbeddingService:
 
         Args:
             texts: 文本列表
-            batch_size: 批处理大小
+            batch_size: 每批发送的文本数
             show_progress: 是否显示进度
 
         Returns:
@@ -208,56 +164,81 @@ class EmbeddingService:
                 )
 
             try:
-                # 并发处理批次中的文本
-                batch_embeddings = await self._process_batch_concurrent(batch)
+                # OpenAI API 原生支持批量输入，一次请求发送整个 batch
+                response = await self.client.embeddings.create(
+                    model=self.model_name,
+                    input=batch,
+                )
+
+                # response.data 按输入索引排序
+                batch_embeddings = [
+                    np.array(item.embedding, dtype=np.float32) for item in response.data
+                ]
                 embeddings.extend(batch_embeddings)
 
-                # 批次间延迟，避免过载
+                # 批次间小延迟，避免过载
                 if batch_num < total_batches:
                     await asyncio.sleep(0.1)
 
-            except Exception as e:
+            except APIError as e:
                 logger.error(f"Failed to process batch {batch_num}: {e}")
-                # 使用零向量作为后备
                 for _ in batch:
                     embeddings.append(np.zeros(self.dimension, dtype=np.float32))
 
         return np.array(embeddings)
 
-    async def _process_batch_concurrent(self, texts: list[str]) -> list[np.ndarray]:
-        """并发处理批次中的文本"""
-        tasks = [self.get_embedding(text) for text in texts]
+    def get_embedding_sync(self, text: str) -> np.ndarray:
+        """
+        同步获取 embedding（用于非异步环境）
 
-        try:
-            embeddings = await asyncio.gather(*tasks, return_exceptions=True)
+        Args:
+            text: 输入文本
 
-            results = []
-            for i, embedding in enumerate(embeddings):
-                if isinstance(embedding, Exception):
-                    logger.warning(f"Failed to get embedding for text {i}: {embedding}")
-                    results.append(np.zeros(self.dimension, dtype=np.float32))
-                else:
-                    results.append(embedding)
+        Returns:
+            embedding 向量
+        """
+        if not text or not text.strip():
+            raise ValueError("Text cannot be empty")
 
-            return results
+        # 延迟创建同步客户端
+        if self._sync_client is None:
+            self._sync_client = OpenAI(
+                base_url=self.base_url,
+                api_key=self.api_key,
+                timeout=self.timeout,
+                max_retries=max(0, self.max_retries - 1),
+            )
 
-        except Exception as e:
-            logger.error(f"Concurrent processing failed: {e}")
-            # 回退到顺序处理
-            return await self._process_batch_sequential(texts)
-
-    async def _process_batch_sequential(self, texts: list[str]) -> list[np.ndarray]:
-        """顺序处理批次中的文本（回退方案）"""
-        embeddings = []
-        for text in texts:
+        for attempt in range(self.max_retries):
             try:
-                embedding = await self.get_embedding(text)
-                embeddings.append(embedding)
-                await asyncio.sleep(0.05)  # 小延迟
+                response = self._sync_client.embeddings.create(
+                    model=self.model_name,
+                    input=text.strip(),
+                )
+
+                embedding = np.array(response.data[0].embedding, dtype=np.float32)
+
+                if len(embedding) != self.dimension:
+                    embedding = self._adjust_dimension(embedding)
+
+                return embedding
+
+            except APIError as e:
+                logger.warning(f"Sync embedding attempt {attempt + 1} failed: {e}")
+                if attempt < self.max_retries - 1:
+                    time.sleep((2**attempt) * 0.5)
+                else:
+                    raise Exception(
+                        f"Sync embedding failed after {self.max_retries} attempts: {e}"
+                    )
             except Exception as e:
-                logger.warning(f"Failed to get embedding: {e}")
-                embeddings.append(np.zeros(self.dimension, dtype=np.float32))
-        return embeddings
+                logger.warning(f"Sync embedding attempt {attempt + 1} failed: {e}")
+                if attempt < self.max_retries - 1:
+                    time.sleep((2**attempt) * 0.5)
+                else:
+                    raise
+
+        return np.zeros(self.dimension, dtype=np.float32)
 
     def _adjust_dimension(self, embedding: np.ndarray) -> np.ndarray:
         """调整向量维度"""
@@ -274,60 +255,17 @@ class EmbeddingService:
         else:
             return embedding
 
-    def get_embedding_sync(self, text: str) -> np.ndarray:
-        """
-        同步获取 embedding（用于非异步环境）
-
-        Args:
-            text: 输入文本
-
-        Returns:
-            embedding 向量
-        """
-        if not text or not text.strip():
-            raise ValueError("Text cannot be empty")
-
-        for attempt in range(self.max_retries):
-            try:
-                payload = {"model": self.model_name, "prompt": text.strip()}
-
-                response = requests.post(
-                    self.embeddings_url, json=payload, timeout=self.timeout
-                )
-
-                if response.status_code == 200:
-                    result = response.json()
-                    embedding = np.array(result["embedding"], dtype=np.float32)
-
-                    if len(embedding) != self.dimension:
-                        embedding = self._adjust_dimension(embedding)
-
-                    return embedding
-                else:
-                    raise Exception(f"HTTP {response.status_code}: {response.text}")
-
-            except Exception as e:
-                logger.warning(f"Sync embedding attempt {attempt + 1} failed: {e}")
-                if attempt < self.max_retries - 1:
-                    time.sleep((2**attempt) * 0.5)
-                else:
-                    raise
-
     async def get_service_info(self) -> dict:
         """获取服务信息"""
         try:
-            async with self.session.get(self.tags_url) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return {
-                        "status": "healthy",
-                        "base_url": self.base_url,
-                        "model": self.model_name,
-                        "dimension": self.dimension,
-                        "available_models": [
-                            model["name"] for model in data.get("models", [])
-                        ],
-                    }
+            models_response = await self.client.models.list()
+            return {
+                "status": "healthy",
+                "base_url": self.base_url,
+                "model": self.model_name,
+                "dimension": self.dimension,
+                "available_models": [m.id for m in models_response.data],
+            }
         except Exception as e:
             return {
                 "status": "unhealthy",
@@ -338,12 +276,13 @@ class EmbeddingService:
 
     async def cleanup(self):
         """清理资源"""
-        if self.session:
-            await self.session.close()
-            self.session = None
+        if self.client:
+            await self.client.close()
+            self.client = None
 
-        if self._executor:
-            self._executor.shutdown(wait=True)
+        if self._sync_client:
+            self._sync_client.close()
+            self._sync_client = None
 
         logger.info("Embedding service cleaned up")
 

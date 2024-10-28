@@ -2600,7 +2600,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
-    { name = "aiohttp" },
     { name = "chardet" },
     { name = "datetime" },
     { name = "faiss-cpu" },
@@ -2610,6 +2609,7 @@ dependencies = [
     { name = "langchain" },
     { name = "loguru" },
     { name = "numpy" },
+    { name = "openai" },
     { name = "openpyxl" },
     { name = "pandas" },
     { name = "pandas-stubs" },
@@ -2621,7 +2621,6 @@ dependencies = [
     { name = "pymilvus" },
     { name = "pymupdf" },
     { name = "python-docx" },
-    { name = "requests" },
     { name = "ruff" },
     { name = "sqlmodel" },
     { name = "torch" },
@@ -2639,7 +2638,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles", specifier = ">=25.1.0" },
-    { name = "aiohttp", specifier = ">=3.13.4" },
     { name = "chardet", specifier = ">=7.4.3" },
     { name = "datetime", specifier = ">=6.0" },
     { name = "faiss-cpu", specifier = ">=1.14.3" },
@@ -2649,6 +2647,7 @@ requires-dist = [
     { name = "langchain", specifier = ">=1.3.14" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "numpy", specifier = ">=2.5.1" },
+    { name = "openai", specifier = ">=1.0.0" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=3.0.3" },
     { name = "pandas-stubs", specifier = ">=3.0.3.260530" },
@@ -2660,7 +2659,6 @@ requires-dist = [
     { name = "pymilvus", specifier = ">=3.0.0" },
     { name = "pymupdf", specifier = ">=1.28.0" },
     { name = "python-docx", specifier = ">=1.2.0" },
-    { name = "requests", specifier = ">=2.33.0" },
     { name = "ruff", specifier = ">=0.15.22" },
     { name = "sqlmodel", specifier = ">=0.0.39" },
     { name = "torch", specifier = ">=2.12.1" },

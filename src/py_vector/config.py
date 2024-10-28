@@ -8,10 +8,11 @@ class Settings(BaseSettings):
     VERSION: str = "v1.0.0"
     API_V1_STR: str = "/api/v1"
 
-    # Ollama 配置
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    # Embedding 配置
+    EMBEDDING_BASE_URL: str = "http://localhost:11434/v1"
     EMBEDDING_MODEL: str = "bge-m3"
     EMBEDDING_DIMENSION: int = 1024
+    EMBEDDING_API_KEY: str = "ollama"
 
     # 存储配置
     STORAGE_PATH: str = "./storage"

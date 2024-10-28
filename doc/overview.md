@@ -14,7 +14,9 @@
 |---|---|
 | API 框架 | FastAPI（async-first） |
 | 向量引擎 | FAISS（支持 IndexFlatIP / IndexFlatL2 / IndexIVFFlat / IndexHNSW） |
-| 嵌入模型 | Ollama + bge-m3（1024 维） |
+| 嵌入模型 | OpenAI 兼容 API（Ollama / OpenAI / Azure 等） |
+| 嵌入维度 | 1024（bge-m3）或按模型自动检测 |
+| OpenAPI 客户端 | `openai` Python 库 |
 | 文档解析 | PyMuPDF（PDF）、python-docx（DOCX）、openpyxl / pandas（Excel/CSV）、chardet（编码检测） |
 | 运行环境 | Python 3.13，uv 包管理 |
 | 构建系统 | Hatchling |
@@ -64,13 +66,13 @@ src/py_vector/
 
 ### core/embedding.py
 
-`EmbeddingService` 是嵌入生成的核心。它通过 aiohttp 连接本地 Ollama 实例，提供：
+`EmbeddingService` 通过 **OpenAI 兼容 API**（`/v1/embeddings`）生成嵌入向量，支持任何兼容的服务（Ollama、OpenAI、Azure 等）。提供：
 
-- 单文本和批量文本的异步嵌入生成
-- 指数退避重试（最多 3 次）
-- 并发批处理 + 顺序回退
+- 单文本和批量文本的异步嵌入生成（使用 `openai` Python 客户端库）
+- 指数退避重试
+- 批量输入原生支持（一次请求发送多段文本）
 - 维度自动检测和适配
-- 启动时验证 Ollama 连接、模型可用性和嵌入测试
+- 启动时验证连接和模型可用性
 - 同步接口 `get_embedding_sync` 用于非异步环境
 
 ### core/vector_store.py
@@ -149,9 +151,10 @@ bash scripts/start.sh
 
 | 变量 | 默认值 | 说明 |
 |---|---|---|
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama 服务地址 |
+| `EMBEDDING_BASE_URL` | `http://localhost:11434/v1` | Embedding 服务地址（OpenAI 兼容） |
 | `EMBEDDING_MODEL` | `bge-m3` | 嵌入模型名 |
 | `EMBEDDING_DIMENSION` | `1024` | 嵌入向量维度 |
+| `EMBEDDING_API_KEY` | `ollama` | API 密钥（Ollama 随便填，真实服务用真实 key） |
 | `CHUNK_SIZE` | `512` | 文本切片大小（字符） |
 | `CHUNK_OVERLAP` | `50` | 切片重叠量（字符） |
 | `MAX_FILE_SIZE` | `50MB` | 上传文件大小限制 |

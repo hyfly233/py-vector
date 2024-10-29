@@ -1,5 +1,8 @@
+import json
 import os
+from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -35,6 +38,13 @@ class Settings(BaseSettings):
     RERANKER_ENABLED: bool = False
     RERANKER_TOP_K: int = 10
 
+    # 模型组配置（主备切换）
+    # 空字典时退回到 LLM_* / EMBEDDING_* / RERANKER_* 单个字段。
+    # 配置后每种模型按顺序尝试，失败自动切换到下一个。
+    # JSON 格式示例：
+    #   MODEL_GROUPS='{"embedding":[{"base_url":"http://localhost:11434/v1","model":"bge-m3","api_key":"ollama","dimension":1024}],"llm":[{"base_url":"http://localhost:11434/v1","model":"qwen2.5","api_key":"ollama","temperature":0.7}]}'
+    MODEL_GROUPS: dict[str, list[dict[str, Any]]] = {}
+
     # 存储配置
     STORAGE_PATH: str = "./storage"
     INDEX_PATH: str = "./storage/indexes"
@@ -52,6 +62,16 @@ class Settings(BaseSettings):
 
     # 日志配置
     LOG_LEVEL: str = "INFO"
+
+    @field_validator("MODEL_GROUPS", mode="before")
+    @classmethod
+    def parse_model_groups(cls, v: Any) -> dict[str, list[dict[str, Any]]]:
+        """支持环境变量传入 JSON 字符串或 dict"""
+        if isinstance(v, str):
+            if not v.strip():
+                return {}
+            return json.loads(v)
+        return v or {}
 
     class Config:
         env_file = ".env"

@@ -155,6 +155,8 @@ bash scripts/start.sh
 | `EMBEDDING_MODEL` | `bge-m3` | 嵌入模型名 |
 | `EMBEDDING_DIMENSION` | `1024` | 嵌入向量维度 |
 | `EMBEDDING_API_KEY` | `ollama` | API 密钥（Ollama 随便填，真实服务用真实 key） |
+| **模型组配置（主备切换）** | | |
+| `MODEL_GROUPS` | `{}` | JSON 格式，每种模型类型可定义多个端点，按顺序尝试。为空时退回到单字段配置 |
 | `CHUNK_SIZE` | `512` | 文本切片大小（字符） |
 | `CHUNK_OVERLAP` | `50` | 切片重叠量（字符） |
 | `MAX_FILE_SIZE` | `50MB` | 上传文件大小限制 |
@@ -182,7 +184,8 @@ bash scripts/start.sh
 
 - **Async-first**：所有 I/O（HTTP 调用、文件操作、FAISS 操作）都是异步的，避免阻塞事件循环
 - **FAISS 而非向量数据库**：选择本地 FAISS 而非 Milvus/Pinecone，减少外部依赖，适合中小规模（百万级向量以内）
-- **Ollama 本地嵌入**：不使用商业嵌入 API，数据不出本机
+- **OpenAI 兼容协议**：Embedding / LLM / Reranker 全部使用 OpenAI 协议，切换服务商只需改配置
+- **模型组主备切换**：支持每种模型类型配置多个端点，按顺序尝试，失败自动切换。例如本地 Ollama 做主，云端 OpenAI 做备。空配置时退回到单字段，完全向后兼容
 - **标记删除**：删除文档时仅标记，重建索引时真正清理——避免频繁重建 FAISS 的不变性约束
 - **异步文档处理**：上传后立即返回，后台任务处理文档，通过状态端点轮询进度
 

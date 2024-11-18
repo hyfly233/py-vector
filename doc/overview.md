@@ -50,8 +50,10 @@ HTTP 请求 → 路由 → 端点处理器 → 服务层 → 核心层 → FAISS
 src/py_vector/
 ├── api/v1/endpoints/     # 路由处理器（search.py, documents.py, health.py）
 ├── core/                 # 领域核心
-│   ├── embedding.py      # EmbeddingService — Ollama 嵌入客户端
-│   ├── vector_store.py   # VectorStore — FAISS 索引封装（CRUD + 持久化）
+│   ├── embedding.py      # EmbeddingService — OpenAI 兼容嵌入客户端
+│   ├── vector_store.py   # VectorStore 抽象接口 + 工厂函数
+│   ├── faiss_vector_store.py  # FAISSVectorStore — FAISS 后端实现
+│   ├── milvus_vector_store.py # MilvusVectorStore — Milvus 后端实现
 │   ├── document_processor.py  # DocumentProcessor — 多格式文档提取和切片
 │   ├── search_engine.py  # SearchEngine — 旧版搜索封装
 │   └── faiss_persistence.py   # FAISSPersistence / IncrementalFAISS / ShardedFAISS
@@ -155,6 +157,9 @@ bash scripts/start.sh
 | `EMBEDDING_MODEL` | `bge-m3` | 嵌入模型名 |
 | `EMBEDDING_DIMENSION` | `1024` | 嵌入向量维度 |
 | `EMBEDDING_API_KEY` | `ollama` | API 密钥（Ollama 随便填，真实服务用真实 key） |
+| **向量存储配置** | | |
+| `VECTOR_STORE_TYPE` | `faiss` | 向量存储后端：`faiss` 或 `milvus` |
+| `MILVUS_URI` | `""` | Milvus 连接地址。空时启用本地 LanceDB 模式 |
 | **模型组配置（主备切换）** | | |
 | `MODEL_GROUPS` | `{}` | JSON 格式，每种模型类型可定义多个端点，按顺序尝试。为空时退回到单字段配置 |
 | `CHUNK_SIZE` | `512` | 文本切片大小（字符） |
@@ -183,7 +188,9 @@ bash scripts/start.sh
 ## 设计决策
 
 - **Async-first**：所有 I/O（HTTP 调用、文件操作、FAISS 操作）都是异步的，避免阻塞事件循环
-- **FAISS 而非向量数据库**：选择本地 FAISS 而非 Milvus/Pinecone，减少外部依赖，适合中小规模（百万级向量以内）
+- **FAISS 而非向量数据库**：默认使用本地 FAISS，减少外部依赖，适合中小规模。
+- **也可选 Milvus**：通过 `VECTOR_STORE_TYPE=milvus` 切换到 Milvus（本地 LanceDB 模式或远程服务），
+  二者共享同一 `VectorStore` 抽象接口，上层代码无需改动。
 - **OpenAI 兼容协议**：Embedding / LLM / Reranker 全部使用 OpenAI 协议，切换服务商只需改配置
 - **模型组主备切换**：支持每种模型类型配置多个端点，按顺序尝试，失败自动切换。例如本地 Ollama 做主，云端 OpenAI 做备。空配置时退回到单字段，完全向后兼容
 - **标记删除**：删除文档时仅标记，重建索引时真正清理——避免频繁重建 FAISS 的不变性约束

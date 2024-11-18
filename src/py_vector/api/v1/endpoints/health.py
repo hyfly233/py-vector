@@ -75,7 +75,7 @@ async def _check_vector_store() -> ComponentHealth:
 
         # 检查索引状态
         index_healthy = (
-            vector_store.index is not None and stats.get("total_chunks", 0) >= 0
+            stats.get("index_size", 0) >= 0 and stats.get("total_chunks", 0) >= 0
         )
 
         status = "healthy" if index_healthy else "degraded"
@@ -88,8 +88,8 @@ async def _check_vector_store() -> ComponentHealth:
                 "total_documents": stats.get("total_documents", 0),
                 "total_chunks": stats.get("total_chunks", 0),
                 "index_size": stats.get("index_size", 0),
-                "dimension": vector_store.dimension,
-                "index_type": vector_store.index_type,
+                "dimension": stats.get("dimension", 0),
+                "index_type": stats.get("index_type", "unknown"),
             },
         )
 

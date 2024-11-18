@@ -16,15 +16,18 @@ HTTP Request → Router → Endpoint Handler → Service Layer → Core Layer �
 |---|---|---|
 | **API** | `api/v1/endpoints/` | Route handlers, request validation, HTTP status codes |
 | **Services** | `services/` | Business logic: document lifecycle, search orchestration, caching |
-| **Core** | `core/` | Domain primitives: embedding, vector store, document parsing, FAISS persistence |
+| **Core** | `core/` | Domain primitives: embedding, vector store (abstract + FAISS + Milvus), document parsing, FAISS persistence |
+| **Vector Store** | `core/vector_store.py` | Abstract `VectorStore` class + factory `get_vector_store()` |
+| **FAISS** | `core/faiss_vector_store.py` | `FAISSVectorStore(VectorStore)` — 默认后端 |
+| **Milvus** | `core/milvus_vector_store.py` | `MilvusVectorStore(VectorStore)` — 可选后端 |
 | **Models** | `models/` | Pydantic schemas for request/response shape |
 | **Utils** | `utils/` | Cross-cutting helpers (response formatting) |
 
 **Data flow**:
 1. Document upload → `DocumentService` saves file → `DocumentProcessor` extracts text & chunks
 2. Chunks → `EmbeddingService` (OpenAI-compatible API via `openai` Python client) → float vectors
-3. Vectors → `VectorStore` (FAISS index, persisted to disk)
-4. Search query → same embedding → FAISS similarity search → ranked results
+3. Vectors → `VectorStore` (abstract interface, default FAISS, switchable to Milvus) → persistence
+4. Search query → same embedding → vector store similarity search → ranked results
 
 **Lifespan** (`main.py:AppLifespan`): Startup initializes embedding service, vector store, document service, search service; shutdown cleans them in reverse order. All services follow init/cleanup lifecycle.
 

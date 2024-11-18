@@ -38,12 +38,16 @@ class Settings(BaseSettings):
     RERANKER_ENABLED: bool = False
     RERANKER_TOP_K: int = 10
 
-    # 模型组配置（主备切换）
+    # 模型组配置（主备切换，Hermes 风格）
     # 空字典时退回到 LLM_* / EMBEDDING_* / RERANKER_* 单个字段。
     # 配置后每种模型按顺序尝试，失败自动切换到下一个。
     # JSON 格式示例：
     #   MODEL_GROUPS='{"embedding":[{"base_url":"http://localhost:11434/v1","model":"bge-m3","api_key":"ollama","dimension":1024}],"llm":[{"base_url":"http://localhost:11434/v1","model":"qwen2.5","api_key":"ollama","temperature":0.7}]}'
     MODEL_GROUPS: dict[str, list[dict[str, Any]]] = {}
+
+    # 向量存储配置
+    VECTOR_STORE_TYPE: str = "faiss"  # faiss | milvus
+    MILVUS_URI: str = ""  # 空值时使用 STORAGE_PATH/milvus.db（本地模式）
 
     # 存储配置
     STORAGE_PATH: str = "./storage"

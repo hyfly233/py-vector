@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 
 from py_vector.config import settings
-from py_vector.core.vector_store import Document, SearchResult, VectorStore
+from py_vector.vector_dbs.vector_store import Document, SearchResult, VectorStore
 
 logger = logging.getLogger(__name__)
 

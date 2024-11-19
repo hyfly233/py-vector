@@ -16,10 +16,10 @@ HTTP Request → Router → Endpoint Handler → Service Layer → Core Layer �
 |---|---|---|
 | **API** | `api/v1/endpoints/` | Route handlers, request validation, HTTP status codes |
 | **Services** | `services/` | Business logic: document lifecycle, search orchestration, caching |
-| **Core** | `core/` | Domain primitives: embedding, vector store (abstract + FAISS + Milvus), document parsing, FAISS persistence |
-| **Vector Store** | `core/vector_store.py` | Abstract `VectorStore` class + factory `get_vector_store()` |
-| **FAISS** | `core/faiss_vector_store.py` | `FAISSVectorStore(VectorStore)` — 默认后端 |
-| **Milvus** | `core/milvus_vector_store.py` | `MilvusVectorStore(VectorStore)` — 可选后端 |
+| **Core** | `core/` | Domain primitives: embedding, document parsing, FAISS persistence |
+| **Vector Store** | `vector_dbs/vector_store.py` | Abstract `VectorStore` class + factory `get_vector_store()` |
+| **FAISS** | `vector_dbs/faiss_vector_store.py` | `FAISSVectorStore(VectorStore)` — 默认后端 |
+| **Milvus** | `vector_dbs/milvus_vector_store.py` | `MilvusVectorStore(VectorStore)` — 可选后端 |
 | **Models** | `models/` | Pydantic schemas for request/response shape |
 | **Utils** | `utils/` | Cross-cutting helpers (response formatting) |
 
@@ -37,7 +37,8 @@ HTTP Request → Router → Endpoint Handler → Service Layer → Core Layer �
 |---|---|
 | `src/py_vector/` | Package root |
 | `src/py_vector/api/v1/endpoints/` | `search.py`, `documents.py`, `health.py` — FastAPI route handlers |
-| `src/py_vector/core/` | `embedding.py`, `vector_store.py`, `search_engine.py`, `document_processor.py`, `faiss_persistence.py` |
+| `src/py_vector/core/` | `embedding.py`, `document_processor.py`, `search_engine.py` |
+| `src/py_vector/vector_dbs/` | `vector_store.py` (ABC), `faiss_vector_store.py`, `faiss_persistence.py`, `milvus_vector_store.py` |
 | `src/py_vector/services/` | `document_service.py` (18.9KB), `search_service.py` (30.1KB) |
 | `src/py_vector/models/` | `requests.py`, `responses.py` — Pydantic schemas |
 | `src/py_vector/utils/` | `response_helper.py` — `ResponseHelper` singleton for uniform JSON responses |

@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Any
 
 from py_vector.core.embedding import get_embedding_service
-from py_vector.core.vector_store import SearchResult, get_vector_store
 from py_vector.services.document_service import get_document_service
+from py_vector.vector_dbs.vector_store import SearchResult, get_vector_store
 
 logger = logging.getLogger(__name__)
 

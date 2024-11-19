@@ -49,14 +49,15 @@ HTTP 请求 → 路由 → 端点处理器 → 服务层 → 核心层 → FAISS
 ```
 src/py_vector/
 ├── api/v1/endpoints/     # 路由处理器（search.py, documents.py, health.py）
+├── vector_dbs/            # 向量存储实现
+│   ├── vector_store.py    # VectorStore 抽象接口 + 工厂函数
+│   ├── faiss_vector_store.py  # FAISS 后端
+│   ├── faiss_persistence.py   # FAISSPersistence / IncrementalFAISS / ShardedFAISS
+│   └── milvus_vector_store.py # Milvus 后端
 ├── core/                 # 领域核心
 │   ├── embedding.py      # EmbeddingService — OpenAI 兼容嵌入客户端
-│   ├── vector_store.py   # VectorStore 抽象接口 + 工厂函数
-│   ├── faiss_vector_store.py  # FAISSVectorStore — FAISS 后端实现
-│   ├── milvus_vector_store.py # MilvusVectorStore — Milvus 后端实现
 │   ├── document_processor.py  # DocumentProcessor — 多格式文档提取和切片
-│   ├── search_engine.py  # SearchEngine — 旧版搜索封装
-│   └── faiss_persistence.py   # FAISSPersistence / IncrementalFAISS / ShardedFAISS
+│   └── search_engine.py  # SearchEngine — 旧版搜索封装
 ├── services/             # 业务逻辑
 │   ├── document_service.py    # 文档上传、异步处理、查询、删除、备份、重建索引
 │   └── search_service.py      # 高级搜索（向量/混合/关键词）、重排序、缓存、历史

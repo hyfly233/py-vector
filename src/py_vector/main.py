@@ -13,7 +13,7 @@ from py_vector.api.v1.api import api_router
 from py_vector.config import settings
 from py_vector.core.embedding import cleanup_embedding_service
 from py_vector.core.search_engine import SearchEngine
-from py_vector.core.vector_store import cleanup_vector_store
+from py_vector.vector_dbs.vector_store import cleanup_vector_store
 
 load_dotenv()
 

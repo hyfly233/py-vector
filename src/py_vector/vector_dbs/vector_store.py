@@ -162,12 +162,12 @@ async def create_vector_store() -> VectorStore:
     backend = settings.VECTOR_STORE_TYPE.lower()
 
     if backend == "milvus":
-        from py_vector.core.milvus_vector_store import MilvusVectorStore
+        from py_vector.vector_dbs.milvus_vector_store import MilvusVectorStore
 
         logger.info("创建 Milvus 向量存储")
         return MilvusVectorStore()
     else:
-        from py_vector.core.faiss_vector_store import FAISSVectorStore
+        from py_vector.vector_dbs.faiss_vector_store import FAISSVectorStore
 
         logger.info(f"创建 FAISS 向量存储（类型：{backend}）")
         return FAISSVectorStore()

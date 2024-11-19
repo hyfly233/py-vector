@@ -8,7 +8,7 @@ from typing import Any
 
 from py_vector.core.document_processor import document_processor
 from py_vector.core.embedding import get_embedding_service
-from py_vector.core.vector_store import Document, get_vector_store
+from py_vector.vector_dbs.vector_store import Document, get_vector_store
 
 logger = logging.getLogger(__name__)
 

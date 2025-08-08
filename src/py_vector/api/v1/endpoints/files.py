@@ -30,6 +30,25 @@ async def upload_file(
 ):
     """上传文件到 S3 / 本地存储，并记录元数据到 PostgreSQL
 
+    完整处理链路：
+
+    ```
+    上传文件
+    ├── 1. 读取文件内容
+    ├── 2. 保存到临时文件
+    ├── 3. store_file_record()
+    │    ├── 上传到 S3（media_id → 两级散列路径）
+    │    │     例: TtGr1gj1Usaf → media/Tt/Gr/1gj1Usaf
+    │    ├── 计算 SHA256 哈希（去重）
+    │    └── 写入 PostgreSQL files 表
+    │         ├── media_id: 随机短字符串（主键）
+    │         ├── file_name / file_size / content_type
+    │         ├── sha256 / doc_id
+    │         └── storage_type: s3 | local
+    └── 4. 返回 media_id
+          └── GET /files/{media_id} 获取文件内容
+    ```
+
     返回 media_id，可通过 GET /files/{media_id} 获取文件。
     """
     if not file.filename:

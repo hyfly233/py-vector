@@ -45,7 +45,29 @@ async def upload_document(
 ):
     """上传文档
 
-    通过 `index` 参数控制是否将文档内容向量化并存入向量库：
+    完整处理链路：
+
+    ```
+    文件上传
+    ├── index=false ─── 仅保存原始文件到 S3 + PG 记录（media_id）
+    │                   不提取、不切片、不向量化
+    │
+    └── index=true（默认）
+         ├── 1. 保存原始文件到 S3 + PG 元数据（media_id）
+         ├── 2. DocumentProcessor 提取文本
+         │    ├── PDF → get_text("html"）保留表格布局
+         │    ├── DOCX / TXT / MD / Excel / CSV / JSON / XML
+         │    └── 【预留】图片 OCR / 多模态描述
+         ├── 3. 文本分块
+         │    └── CHUNKING_STRATEGY 指定策略（默认 recursive）
+         ├── 4. EmbeddingService 生成向量
+         │    └── OpenAI 兼容 API（Ollama / OpenAI / Azure）
+         ├── 5. 向量存入 VectorStore
+         │    └── FAISS（默认）或 Milvus（VECTOR_STORE_TYPE）
+         └── 6. 返回 doc_id，通过 GET /documents/{id}/status 轮询
+    ```
+
+    通过 `index` 参数控制是否向量化：
     - `index=true`（默认）：上传 → 提取 → 切片 → 嵌入 → 索引
     - `index=false`：仅保存文件，不做向量化处理
 

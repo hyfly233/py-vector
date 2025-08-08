@@ -16,15 +16,32 @@ router = APIRouter()
     response_model=RAGResponse,
 )
 async def ask_rag(request: RAGQuery):
-    """基于文档库内容进行问答。
+    """基于文档库内容进行问答
 
-    流程：
-    1. 接收用户问题
-    2. Agent 调用 search_docs 工具搜索相关文档片段
-    3. LLM 根据检索结果生成带引用的回答
+    完整 RAG 链路：
+
+    ```
+    用户问题
+    └── POST /api/v1/rag/ask
+         ├── 1. get_rag_agent() → 获取全局 RAG Agent（pydantic-ai）
+         ├── 2. Agent.run(user_prompt)
+         │    ├── LLM 决定调用 search_docs 工具
+         │    │    └── SearchService.search()
+         │    │         ├── Embedding 生成查询向量
+         │    │         ├── VectorStore 相似度检索（FAISS / Milvus）
+         │    │         └── 返回排序后的文档片段
+         │    ├── LLM 阅读检索结果
+         │    └── 生成 AnswerWithCitations
+         │         ├── answer: 最终回答
+         │         ├── sources: 引用来源列表
+         │         └── confidence: 可信度
+         └── 3. 返回 RAGResponse
+
+    降级策略：
+    - Agent 调用失败时 → 降级返回纯检索结果，error 字段标记异常原因
 
     Args:
-        request (RAGQuery): RAG 查询请求
+        request (RAGQuery): RAG 查询请求，包含 query（查询词）和 top_k（返回结果数量）
 
     Returns:
         RAGResponse: RAG 问答响应

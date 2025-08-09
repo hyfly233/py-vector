@@ -612,7 +612,9 @@ class SearchService:
     ) -> list[EnhancedSearchResult]:
         """重新排序结果
 
-        基于查询词覆盖率对搜索结果进行重排序，结合原始分数和文本覆盖率。
+        根据配置启用不同的重排序策略：
+        - RERANKER_ENABLED=true → 调用模型重排序（/v1/rerank）
+        - 否则 → 基于查询词覆盖率的启发式重排序
 
         Args:
             results: 增强搜索结果列表（EnhancedSearchResult）
@@ -622,33 +624,37 @@ class SearchService:
             重排序后的 EnhancedSearchResult 列表，更新 max_score、avg_score 和 rank
         """
         try:
-            # 这里可以集成更复杂的重排序模型
-            # 目前使用简单的文本相似度重排序
+            if not results:
+                return results
 
-            query_words = set(query.lower().split())
+            # 提取文本列表和原始分数
+            texts = []
+            initial_scores = []
+            for r in results:
+                chunk_texts = [c.get("text", "") for c in r.chunks if c.get("text")]
+                texts.append(" ".join(chunk_texts))
+                initial_scores.append(r.max_score)
 
-            for result in results:
-                # 计算查询词覆盖率
-                text_words = set()
-                for chunk in result.chunks:
-                    text_words.update(chunk["text"].lower().split())
+            from py_vector.core.reranker import rerank as rerank_scores
 
-                coverage = (
-                    len(query_words.intersection(text_words)) / len(query_words)
-                    if query_words
-                    else 0
-                )
+            ranked = await rerank_scores(
+                query=query,
+                texts=texts,
+                initial_scores=initial_scores,
+                top_k=len(results),
+            )
 
-                # 结合原始分数和覆盖率
-                result.max_score = result.max_score * 0.7 + coverage * 0.3
-                result.avg_score = result.avg_score * 0.7 + coverage * 0.3
+            # 按重排序结果重新排列
+            reranked = []
+            for orig_idx, new_score in ranked:
+                if orig_idx < len(results):
+                    r = results[orig_idx]
+                    r.max_score = new_score
+                    r.avg_score = new_score
+                    r.rank = len(reranked)
+                    reranked.append(r)
 
-            # 重新排序
-            results.sort(key=lambda x: x.max_score, reverse=True)
-            for i, result in enumerate(results):
-                result.rank = i
-
-            return results
+            return reranked
 
         except Exception as e:
             logger.error(f"重排序失败: {e}")

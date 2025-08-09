@@ -44,6 +44,7 @@ async def search_docs(
     Returns:
         格式化的搜索结果文本
     """
+    from py_vector.config import settings
     from py_vector.services.search_service import SearchOptions
 
     try:
@@ -52,6 +53,7 @@ async def search_docs(
             options=SearchOptions(
                 top_k=top_k,
                 search_type="vector",
+                enable_rerank=settings.RERANKER_ENABLED,
                 enable_highlight=False,
                 enable_summary=False,
                 chunk_merge=False,

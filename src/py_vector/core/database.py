@@ -1,7 +1,8 @@
 """异步数据库引擎与会话管理"""
 
 import logging
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -63,8 +64,28 @@ async def dispose_db():
 
 
 async def get_session() -> AsyncGenerator[AsyncSession]:
-    """获取异步数据库会话"""
+    """获取异步数据库会话（FastAPI 依赖注入用）"""
     if not settings.PG_ENABLED or _async_session_maker is None:
         raise RuntimeError("PostgreSQL 未启用，请设置 PG_ENABLED=true")
     async with _async_session_maker() as session:
         yield session
+
+
+@asynccontextmanager
+async def get_standalone_session() -> AsyncIterator[AsyncSession]:
+    """获取独立异步数据库会话（服务层用）
+
+    用于 document_service 等非端点场景，自动管理 session 生命周期。
+    使用方式:
+        async with get_standalone_session() as session:
+            ...
+    """
+    if not settings.PG_ENABLED or _async_session_maker is None:
+        raise RuntimeError("PostgreSQL 未启用，请设置 PG_ENABLED=true")
+    async with _async_session_maker() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+        await session.commit()

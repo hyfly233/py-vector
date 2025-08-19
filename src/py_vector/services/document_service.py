@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import logging
+import mimetypes
 import shutil
 import uuid
 from datetime import datetime
@@ -64,6 +65,12 @@ class DocumentService:
         """
         上传并处理文档
 
+        完整链路：
+        1. 保存临时文件
+        2. 上传到 S3 + 写入 PG 文件元数据（获取 media_id）
+        3. index=True → 异步提取 → 分块 → 嵌入 → 索引
+        4. index=False → 仅保存文件
+
         Args:
             file_content: 文件内容（二进制数据）
             filename: 文件名
@@ -74,29 +81,51 @@ class DocumentService:
         Returns:
             返回包含处理结果的字典，关键字段：
             - doc_id: 文档ID
-            - status: 处理状态（"processing" 处理中 / "completed" 完成 / "error" 失败）
+            - media_id: 文件存储标识（可通过 GET /files/{media_id} 获取文件）
+            - status: 处理状态
             - message: 状态描述信息
             - filename: 文件名
             - indexed: 是否已索引（仅 index=False 时返回）
-            - error: 错误信息（仅 status 为 "error" 时返回）
         """
         # 生成文档ID
         doc_id = str(uuid.uuid4())
 
         try:
-            # 保存临时文件
+            # 1. 保存临时文件
             temp_file_path = await self.document_processor.save_temp_file(
                 file_content, filename
             )
 
-            # 特殊保存原始文件（即使不索引也保留）
+            # 2. 存储原始文件到 S3 / 本地 + PG 元数据
+            media_id = None
+            if settings.PG_ENABLED:
+                from py_vector.core.database import get_standalone_session
+                from py_vector.core.file_store import store_file_record
+
+                storage_type = "s3" if settings.S3_ENABLED else "local"
+                async with get_standalone_session() as session:
+                    fr = await store_file_record(
+                        session,
+                        local_path=temp_file_path,
+                        file_name=filename,
+                        content_type=(
+                            mimetypes.guess_type(filename)[0]
+                            or "application/octet-stream"
+                        ),
+                        doc_id=doc_id,
+                        storage_type=storage_type,
+                    )
+                    if fr:
+                        media_id = fr.media_id
+                    else:
+                        logger.warning("文件存储到 PG 失败，media_id 为空")
+
+            # 同时保留本地永久副本（向后兼容）
             file_storage_path = Path(settings.DOCUMENTS_PATH) / f"{doc_id}_{filename}"
             file_storage_path.parent.mkdir(parents=True, exist_ok=True)
-            # 复制临时文件到永久存储
             shutil.copy2(temp_file_path, file_storage_path)
 
             if not index:
-                # 仅保存，不向量化
                 self.processing_status[doc_id] = {
                     "status": "completed",
                     "filename": filename,
@@ -110,13 +139,14 @@ class DocumentService:
                 logger.info(f"✅ 文件已保存（未索引）: {doc_id} ({filename})")
                 return {
                     "doc_id": doc_id,
+                    "media_id": media_id,
                     "status": "completed",
                     "message": "文件上传成功（未存入向量库）",
                     "filename": filename,
                     "indexed": False,
                 }
 
-            # 初始化处理状态
+            # 3. 初始化处理状态
             self.processing_status[doc_id] = {
                 "status": "processing",
                 "filename": filename,
@@ -126,13 +156,16 @@ class DocumentService:
                 "message": "开始处理文档...",
             }
 
-            # 异步处理文档
+            # 4. 异步处理文档（传入 media_id 用于向量记录）
             asyncio.create_task(
-                self._process_document_async(doc_id, temp_file_path, metadata)
+                self._process_document_async(
+                    doc_id, temp_file_path, metadata, media_id=media_id
+                )
             )
 
             return {
                 "doc_id": doc_id,
+                "media_id": media_id,
                 "status": "processing",
                 "message": "文档上传成功，正在处理中...",
                 "filename": filename,
@@ -148,13 +181,18 @@ class DocumentService:
             }
             return {
                 "doc_id": doc_id,
+                "media_id": None,
                 "status": "error",
                 "error": str(e),
                 "message": "文档上传失败",
             }
 
     async def _process_document_async(
-        self, doc_id: str, file_path: Path, metadata: dict[str, Any] | None = None
+        self,
+        doc_id: str,
+        file_path: Path,
+        metadata: dict[str, Any] | None = None,
+        media_id: str | None = None,
     ):
         """异步处理文档
 
@@ -164,16 +202,31 @@ class DocumentService:
             doc_id: 文档ID
             file_path: 临时文件路径
             metadata: 额外元数据
-
-        Returns:
-            None（结果通过 processing_status 跟踪）
+            media_id: 文件存储标识（如已启用 S3+PG）
         """
         try:
             # 更新状态：文本提取
             self._update_processing_status(doc_id, 10, "正在提取文档文本...")
 
-            # 处理文档
-            process_result = await self.document_processor.process_document(file_path)
+            # 处理文档（传入 storage_type 和 storage_path）
+            storage_type = "s3" if settings.S3_ENABLED else "local"
+            storage_path = None
+            if media_id:
+                from py_vector.models.file import s3_key_for
+
+                storage_path = (
+                    s3_key_for(media_id)
+                    if storage_type == "s3"
+                    else str(
+                        Path(settings.DOCUMENTS_PATH) / f"{doc_id}_{file_path.name}"
+                    )
+                )
+
+            process_result = await self.document_processor.process_document(
+                file_path,
+                storage_type=storage_type,
+                storage_path=storage_path,
+            )
 
             if process_result["status"] != "success":
                 raise Exception(
@@ -206,12 +259,14 @@ class DocumentService:
                     "document_hash": process_result["document_hash"],
                     "file_hash": file_hash,
                     "chunk_length": len(chunk),
+                    "storage_type": storage_type,
+                    **({"media_id": media_id} if media_id else {}),
                     **(metadata or {}),
                 }
 
                 doc = Document(
                     doc_id=doc_id,
-                    file_path=str(file_path),
+                    file_path=storage_path or str(file_path),
                     file_name=process_result["file_name"],
                     chunk_index=i,
                     text=chunk,

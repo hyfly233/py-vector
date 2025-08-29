@@ -12,9 +12,9 @@ from fastapi.responses import JSONResponse
 
 from py_vector.api.v1.api_routers import api_router
 from py_vector.config import settings
+from py_vector.core.database import dispose_db, init_db
 from py_vector.core.embedding import cleanup_embedding_service
 from py_vector.core.s3 import ensure_bucket_exists
-from py_vector.core.search_engine import SearchEngine
 from py_vector.vector_dbs.vector_store import cleanup_vector_store
 
 load_dotenv()
@@ -43,17 +43,16 @@ class AppLifespan:
     """Fast Api 生命周期管理类"""
 
     def __init__(self):
-        self.search_engine = None
+        pass
 
     async def startup(self, fast_api_app: FastAPI):
         """启动时初始化"""
         logger.info("✅ Initializing application components...")
 
-        # 初始化搜索引擎
-        self.search_engine = SearchEngine()
-        await self.search_engine.initialize()
-        # 将搜索引擎实例存储在 FastAPI 应用状态中
-        fast_api_app.state.search_engine = self.search_engine
+        # 初始化向量存储（触发 get_vector_store 单例）
+        from py_vector.vector_dbs.vector_store import get_vector_store
+
+        await get_vector_store()
 
         # 初始化 S3 桶检查
         if settings.S3_ENABLED:
@@ -62,8 +61,6 @@ class AppLifespan:
                 logger.warning("⚠️ S3 存储桶不可用，上传功能可能异常")
 
         # 初始化数据库
-        from py_vector.core.database import init_db
-
         await init_db()
 
         logger.info("✅ Application startup complete")
@@ -72,13 +69,7 @@ class AppLifespan:
         """关闭时清理"""
         logger.info("✅ Cleaning up application components...")
 
-        if self.search_engine:
-            # 清理搜索引擎
-            await self.search_engine.cleanup()
-
         # 清理数据库
-        from py_vector.core.database import dispose_db
-
         await dispose_db()
 
         await cleanup_embedding_service()

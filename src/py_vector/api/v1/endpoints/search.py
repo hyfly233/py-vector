@@ -1,11 +1,9 @@
 import time
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from py_vector.core.search_engine import SearchEngine
-from py_vector.dependencies import get_search_engine
 from py_vector.models.requests import SearchResponse
 from py_vector.services.document_service import get_document_service
 from py_vector.services.search_service import (
@@ -45,29 +43,42 @@ class AdvancedSearchRequest(BaseModel):
     metadata_filters: dict | None = None
 
 
-@router.post(path="/", response_model=SearchResponse)
-async def search_documents(
-    request: SearchRequest, search_engine: SearchEngine = Depends(get_search_engine)
-):
+@router.post(path="/")
+async def search_documents(request: SearchRequest):
     """搜索文档
+
+    使用 DocumentService 进行向量检索，返回排序后的结果。
 
     Args:
         request (SearchRequest): 搜索请求，包含查询词和参数
-        search_engine (SearchEngine): 搜索引擎实例（依赖注入）
 
     Returns:
-        SearchResponse: 搜索结果
+        SearchResponse: 搜索结果，包含 query、results 和 processing_time
     """
     start_time = time.time()
 
     try:
-        results = await search_engine.search(request.query, request.top_k)
+        document_service = await get_document_service()
+        result_dict = await document_service.search_documents(
+            query=request.query,
+            top_k=request.top_k or 10,
+            filter_doc_ids=request.filter_doc_ids,
+            min_score=request.min_score or 0.1,
+        )
         processing_time = time.time() - start_time
+
+        # search_documents 返回 dict，提取 results 列表
+        if isinstance(result_dict, dict):
+            results = result_dict.get("results", [])
+            total = result_dict.get("total", len(results))
+        else:
+            results = result_dict
+            total = len(results)
 
         return SearchResponse(
             query=request.query,
             results=results,
-            total_results=len(results),
+            total_results=total,
             processing_time=processing_time,
         )
     except Exception as e:
@@ -129,21 +140,21 @@ async def search_documents_by_content(request: SearchRequest):
 
 @router.get(
     path="/stats",
-    summary="获取搜索引擎统计信息",
+    summary="获取向量存储统计信息",
     response_model=dict[str, Any],
-    response_description="搜索引擎统计信息",
+    response_description="向量存储统计信息",
 )
-async def get_search_stats(search_engine: SearchEngine = Depends(get_search_engine)):
-    """获取搜索引擎统计信息
-
-    Args:
-        search_engine (SearchEngine): 搜索引擎实例（依赖注入）
+async def get_search_stats():
+    """获取向量存储统计信息
 
     Returns:
-        dict: 搜索引擎统计信息，包含索引大小、文档数量等字段
+        dict: 统计信息，包含索引大小、文档数量、维度等字段
     """
     try:
-        stats = await search_engine.get_stats()
+        from py_vector.vector_dbs.vector_store import get_vector_store
+
+        vector_store = await get_vector_store()
+        stats = await vector_store.get_stats()
         return stats
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
